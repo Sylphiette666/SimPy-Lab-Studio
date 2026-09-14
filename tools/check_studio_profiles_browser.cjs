@@ -17,6 +17,7 @@ const path = require('node:path');
     assert.equal((await fixture.json()).injected_test_agent, true);
     await page.goto(url, {waitUntil: 'networkidle'});
     await page.waitForFunction(() => document.querySelector('#model-name').value);
+    if (await page.locator('#edit-model').count()) await page.locator('#edit-model').click();
     await page.locator('#until-days').fill('0.05');
     await page.locator('#warmup-days').fill('0.005');
     await page.locator('#replications').fill('2');
