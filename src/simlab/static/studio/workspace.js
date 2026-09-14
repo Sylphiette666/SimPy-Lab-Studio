@@ -177,11 +177,56 @@
   }
 
   window.StudioWorkspace = {beginPreview, previewStarting, previewLoaded, openModel, frame, sync, renderResults, complete};
+  const assistantPanel = document.querySelector(".assistant-panel");
+  const assistantDialog = $("assistant-dialog");
+  const assistantHome = document.createComment("running assistant dock position");
+  assistantPanel.before(assistantHome);
+  function keepConversationPosition(move) {
+    const messages = $("messages");
+    const top = messages.getBoundingClientRect().top;
+    const atBottom = messages.scrollHeight - messages.clientHeight - messages.scrollTop < 24;
+    const anchor = [...messages.children].find((item) => item.getBoundingClientRect().bottom > top);
+    const rect = anchor?.getBoundingClientRect();
+    const fraction = rect?.height ? Math.max(0, (top - rect.top) / rect.height) : 0;
+    move();
+    if (atBottom) messages.scrollTop = messages.scrollHeight;
+    else if (anchor) {
+      const after = anchor.getBoundingClientRect();
+      messages.scrollTop += after.top - messages.getBoundingClientRect().top + fraction * after.height;
+    }
+  }
+  $("expand-assistant").addEventListener("click", () => {
+    if (assistantDialog.open) { assistantDialog.close(); return; }
+    keepConversationPosition(() => {
+      // Move the existing panel; inputs, selection, listeners and pending replies
+      // stay attached to the same nodes in both views.
+      assistantDialog.append(assistantPanel);
+      text("expand-assistant", "↙ 收起");
+      $("expand-assistant").setAttribute("aria-expanded", "true");
+      $("expand-assistant").setAttribute("aria-label", "收起运行助手对话");
+      $("expand-assistant").title = "收起并返回仿真主界面";
+      assistantDialog.showModal();
+    });
+  });
+  assistantDialog.addEventListener("close", () => {
+    // The closed dialog is already hidden, so temporarily restore its layout
+    // while measuring the conversation's reading position.
+    assistantDialog.style.display = "block";
+    keepConversationPosition(() => {
+      assistantHome.after(assistantPanel);
+      assistantDialog.style.removeProperty("display");
+      text("expand-assistant", "⤢ 放大");
+      $("expand-assistant").setAttribute("aria-expanded", "false");
+      $("expand-assistant").setAttribute("aria-label", "放大运行助手对话");
+      $("expand-assistant").title = "放大查看完整对话";
+      $("expand-assistant").focus({preventScroll: true});
+    });
+  });
   for (const id of ["edit-model", "nav-model"]) $(id).addEventListener("click", openModel);
   $("close-model").addEventListener("click", () => $("model-dialog").close());
   for (const id of ["nav-results", "view-final-results"]) $(id).addEventListener("click", openResults);
   $("close-results").addEventListener("click", () => $("results-dialog").close());
-  for (const id of ["model-dialog", "results-dialog"]) {
+  for (const id of ["model-dialog", "results-dialog", "assistant-dialog"]) {
     const dialog = $(id);
     let pressedOutside = false;
     const isOutside = (event) => {

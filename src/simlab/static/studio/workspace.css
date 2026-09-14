@@ -75,6 +75,8 @@ body.studio-workspace { display:grid; grid-template-columns:64px minmax(0,1fr); 
 .studio-workspace .metric-card canvas { display:block; width:calc(100% + 16px); margin:5px -8px 0; height:23px; }
 .studio-workspace .assistant-panel { position:static; display:flex; flex-direction:column; min-height:0; height:auto; max-height:none; width:auto; grid-column:auto; overflow:hidden; }
 .studio-workspace .assistant-panel .panel-title { padding:12px 14px; min-height:44px; }
+.studio-workspace .assistant-heading-actions { gap:8px; }
+.studio-workspace #expand-assistant { padding:4px 7px; min-height:28px; font-size:11px; }
 .studio-workspace .ai-mark { font-size:24px; }
 .studio-workspace .ai-profile-bar { display:block; padding:10px 14px; grid-column:auto; grid-row:auto; }
 .studio-workspace .ai-profile-heading { display:flex; flex-direction:row; align-items:center; margin-bottom:7px; gap:8px; }
@@ -109,6 +111,18 @@ body.studio-workspace { display:grid; grid-template-columns:64px minmax(0,1fr); 
 .studio-workspace .app-footer span:first-child { color:#49684f; }
 .studio-workspace .modal { max-height:calc(100dvh - 48px); border:1px solid #cbd8ce; border-radius:14px; color:#244635; padding:24px; }
 .studio-workspace .modal::backdrop { background:#133d3054; backdrop-filter:blur(3px); }
+.studio-workspace dialog.assistant-modal { width:1120px; max-width:calc(100vw - 32px); height:calc(100dvh - 40px); max-height:calc(100dvh - 40px); padding:0; overflow:hidden; }
+.studio-workspace .assistant-modal .assistant-panel { height:100%; min-height:0; border:0; border-radius:0; box-shadow:none; }
+.studio-workspace .assistant-modal .panel-title { padding:12px 24px; min-height:52px; }
+.studio-workspace .assistant-modal h2 { font-size:17px; }
+.studio-workspace .assistant-modal .ai-profile-bar { padding:10px 24px; }
+.studio-workspace .assistant-modal .ai-profile-bar select { font-size:13px; }
+.studio-workspace .assistant-modal .assistant-intro { padding:8px 24px 4px; }
+.studio-workspace .assistant-modal .messages { min-height:0; padding:12px 24px 20px; scroll-padding:12px; }
+.studio-workspace .assistant-modal .message { padding:16px 20px; }
+.studio-workspace .assistant-modal .message-content { font-size:15px; line-height:1.9; overflow-wrap:anywhere; }
+.studio-workspace .assistant-modal .assistant-bottom { padding:12px 24px; }
+.studio-workspace .assistant-modal #prompt { font-size:14px; }
 .studio-workspace .model-modal { width:440px; max-width:calc(100vw - 32px); margin:16px auto 16px 80px; padding:0; max-height:calc(100dvh - 32px); }
 .studio-workspace .model-panel { border:0; box-shadow:none; border-radius:0; }
 .studio-workspace .model-panel .panel-title { position:sticky; top:0; background:white; z-index:2; }
