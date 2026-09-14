@@ -16,7 +16,7 @@ import time
 from pathlib import Path
 
 APP_NAME = "SimPy Lab Studio"
-DESKTOP_VERSION = "1.0.0"
+DESKTOP_VERSION = "1.1.0"
 ASSETS = Path(__file__).parent / "static" / "studio"
 
 

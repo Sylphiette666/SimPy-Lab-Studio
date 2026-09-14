@@ -18,6 +18,7 @@ class StudioAIError(ValueError):
 
 
 APIFormat = Literal["auto", "responses", "chat_completions"]
+ADJUSTMENT_OUTPUT_TOKENS = 8192
 
 
 @dataclass(frozen=True)
@@ -111,6 +112,47 @@ class AdjustmentProposal(BaseModel):
     model_config = ConfigDict(extra="forbid", allow_inf_nan=False)
     note: str = Field(min_length=1, max_length=4000)
     changes: list[ParameterChange] = Field(max_length=24)
+
+
+def _output_error(reason: str | None) -> StudioAIError:
+    if reason in {"max_output_tokens", "length"}:
+        return StudioAIError(
+            "LLM 输出达到长度上限（包含思考内容），参数修改未完成，当前模型未更改。"
+            "可尝试分步调整，每次只修改少量设备。"
+        )
+    if reason == "content_filter":
+        return StudioAIError("LLM 服务过滤了本次输出，当前模型未更改。请检查调整目标后重试。")
+    return StudioAIError(
+        "LLM 未完成响应，当前模型未更改。请稍后重试，并检查所选服务支持的接口协议。"
+    )
+
+
+def _response_proposal(response: Any) -> AdjustmentProposal:
+    # Inspect completion before JSON parsing: the SDK's parse helper attempts to
+    # parse partial output too, hiding the provider's token-limit diagnostic.
+    if response.status != "completed":
+        details = getattr(response, "incomplete_details", None)
+        raise _output_error(getattr(details, "reason", None))
+    texts = []
+    for item in response.output:
+        if item.type == "reasoning":
+            continue
+        if item.type != "message" or item.role != "assistant":
+            raise StudioAIError("LLM 返回了非参数消息，当前模型未更改。请检查接口兼容性。")
+        if item.status != "completed":
+            raise _output_error(None)
+        for part in item.content:
+            if part.type == "refusal":
+                raise StudioAIError("LLM 拒绝了本次调整，当前模型未更改。请检查调整目标。")
+            if part.type != "output_text":
+                raise StudioAIError("LLM 返回了不支持的内容格式，当前模型未更改。")
+            texts.append(part.text)
+    content = "".join(texts)
+    if not content.strip():
+        raise StudioAIError(
+            "LLM 未返回参数正文，当前模型未更改。请重试；若持续出现，请检查服务的接口兼容性。"
+        )
+    return AdjustmentProposal.model_validate_json(content)
 
 
 _MACHINE_FIELDS = {
@@ -209,6 +251,10 @@ class ManufacturingAdjustmentAgent:
             {"role": "user", "content": json.dumps(payload, ensure_ascii=False)},
         ]
         try:
+            # Official DeepSeek defaults to thinking, sharing the output budget.
+            # This bounded parameter-edit task uses non-thinking mode. Never
+            # infer a provider from a user label/model or send options to a proxy.
+            deepseek = urlsplit(self.settings.base_url).hostname == "api.deepseek.com"
             if not self.settings.uses_responses:
                 messages[0]["content"] += "\nJSON Schema: " + json.dumps(
                     AdjustmentProposal.model_json_schema(), ensure_ascii=False
@@ -217,23 +263,42 @@ class ManufacturingAdjustmentAgent:
                     model=self.settings.model,
                     messages=messages,
                     response_format={"type": "json_object"},
-                    max_tokens=2400,
+                    max_tokens=ADJUSTMENT_OUTPUT_TOKENS,
+                    **({"extra_body": {"thinking": {"type": "disabled"}}} if deepseek else {}),
                 )
                 if response.choices[0].finish_reason != "stop":
-                    raise StudioAIError("LLM 输出被截断或过滤，当前模型未更改，请重试。")
+                    raise _output_error(response.choices[0].finish_reason)
+                if getattr(response.choices[0].message, "refusal", None):
+                    raise StudioAIError("LLM 拒绝了本次调整，当前模型未更改。请检查调整目标。")
                 content = response.choices[0].message.content or ""
+                if not content.strip():
+                    raise StudioAIError(
+                        "LLM 未返回参数正文，当前模型未更改。请重试或检查接口兼容性。"
+                    )
                 return AdjustmentProposal.model_validate_json(content)
-            response = self.client.responses.parse(
+            response = self.client.responses.create(
                 model=self.settings.model,
                 input=messages,
-                text_format=AdjustmentProposal,
-                max_output_tokens=2400,
+                text={
+                    "format": {
+                        "type": "json_schema",
+                        "name": "AdjustmentProposal",
+                        "strict": True,
+                        "schema": AdjustmentProposal.model_json_schema(),
+                    }
+                },
+                max_output_tokens=ADJUSTMENT_OUTPUT_TOKENS,
                 store=False,
+                **({"reasoning": {"effort": "none"}} if deepseek else {}),
             )
-            if response.output_parsed is None or response.status != "completed":
-                raise StudioAIError("LLM 未返回完整的参数修改，请调整提示词后重试。")
-            return AdjustmentProposal.model_validate(response.output_parsed)
-        except (ValidationError, json.JSONDecodeError, IndexError, AttributeError) as exc:
+            return _response_proposal(response)
+        except (
+            ValidationError,
+            json.JSONDecodeError,
+            IndexError,
+            AttributeError,
+            TypeError,
+        ) as exc:
             raise StudioAIError("LLM 返回的数据未通过结构校验，当前模型未更改。") from exc
         except OpenAIError as exc:
             # Do not return provider bodies/URLs/headers; they can contain secrets.
@@ -242,6 +307,8 @@ class ManufacturingAdjustmentAgent:
                 message = "LLM 认证失败，请检查 API 密钥与服务地址。"
             elif code == 429:
                 message = "LLM 当前限流或额度不足，请稍后重试。"
+            elif code in {400, 404, 422}:
+                message = "LLM 服务不接受当前请求，请在“模型接入”核对模型标识、API 地址及接口协议。"
             else:
                 message = "LLM 请求失败，请检查服务地址、模型、网络或稍后重试。"
             raise StudioAIError(message) from exc

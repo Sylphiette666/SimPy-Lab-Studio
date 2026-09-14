@@ -3,7 +3,7 @@ param(
     [string]$InnoCompiler,
     [string]$Python = 'python',
     [string]$OutputDirectory,
-    [string]$Version = '1.0.0'
+    [string]$Version = '1.1.0'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -15,6 +15,9 @@ $OutputDirectory = [IO.Path]::GetFullPath($OutputDirectory)
 if ($Version -notmatch '^\d+\.\d+\.\d+$') { throw 'Version must have three numeric components.' }
 if ([Diagnostics.FileVersionInfo]::GetVersionInfo($ApplicationPath).ProductName -ne 'SimPy Lab Studio') {
     throw 'ApplicationPath must point to the built SimPy Lab Studio executable.'
+}
+if ([Diagnostics.FileVersionInfo]::GetVersionInfo($ApplicationPath).ProductVersion -ne $Version) {
+    throw 'Installer version must match the desktop executable product version.'
 }
 
 if (-not $InnoCompiler) {

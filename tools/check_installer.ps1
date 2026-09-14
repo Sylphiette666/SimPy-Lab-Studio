@@ -1,8 +1,12 @@
-param([Parameter(Mandatory=$true)][string]$InstallerPath)
+param(
+    [Parameter(Mandatory=$true)][string]$InstallerPath,
+    [string]$BaselineInstallerPath
+)
 
 $ErrorActionPreference = 'Stop'
 $repository = Split-Path -Parent $PSScriptRoot
 $InstallerPath = (Resolve-Path -LiteralPath $InstallerPath).Path
+if ($BaselineInstallerPath) { $BaselineInstallerPath = (Resolve-Path -LiteralPath $BaselineInstallerPath).Path }
 $qaDirectory = Join-Path $repository 'outputs\installer-qa'
 $installDirectory = [IO.Path]::GetFullPath((Join-Path $qaDirectory 'installed-app'))
 if (-not $installDirectory.StartsWith(([IO.Path]::GetFullPath($qaDirectory) + '\'), [StringComparison]::OrdinalIgnoreCase)) {
@@ -31,14 +35,16 @@ function Read-UserDataHashes {
 $before = Read-UserDataHashes
 $uninstaller = Join-Path $installDirectory 'unins000.exe'
 $installedExe = Join-Path $installDirectory 'SimPy Lab Studio.exe'
-$report = [ordered]@{ok=$false;checks=@()}
+$report = [ordered]@{ok=$false;checks=@();versions=@{}}
 try {
     foreach ($phase in @('install','reinstall')) {
+        $phaseInstaller = if ($phase -eq 'install' -and $BaselineInstallerPath) { $BaselineInstallerPath } else { $InstallerPath }
+        $expectedVersion = ([version][Diagnostics.FileVersionInfo]::GetVersionInfo($phaseInstaller).FileVersion).ToString(3)
         $arguments = @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART','/LANG=chinesesimp',
             '/TASKS=desktopicon',
             ('/DIR="' + $installDirectory + '"'),
             ('/LOG="' + (Join-Path $qaDirectory "$phase.log") + '"'))
-        $process = Start-Process -FilePath $InstallerPath -ArgumentList $arguments -WindowStyle Hidden -Wait -PassThru
+        $process = Start-Process -FilePath $phaseInstaller -ArgumentList $arguments -WindowStyle Hidden -Wait -PassThru
         if ($process.ExitCode -ne 0) { throw "$phase failed: exit $($process.ExitCode)" }
         if (-not (Test-Path -LiteralPath $installedExe)) { throw 'Installed executable missing.' }
         if (-not (Test-Path -LiteralPath $uninstaller)) { throw 'Uninstaller missing.' }
@@ -46,6 +52,9 @@ try {
         if (-not (Test-Path -LiteralPath (Join-Path $menuDirectory 'SimPy Lab Studio.lnk'))) { throw 'Start menu shortcut missing.' }
         $record = Get-ItemProperty $registryKey
         if ($record.InstallLocation.TrimEnd('\') -ne $installDirectory) { throw 'Uninstall record points to the wrong directory.' }
+        if ($record.DisplayVersion -ne $expectedVersion) { throw 'Uninstall registration has the wrong version.' }
+        if ([Diagnostics.FileVersionInfo]::GetVersionInfo($installedExe).ProductVersion -ne $expectedVersion) { throw 'Installed EXE has the wrong version.' }
+        $report.versions[$phase] = $expectedVersion
         $shortcut = (New-Object -ComObject WScript.Shell).CreateShortcut($desktopShortcut)
         if ($shortcut.TargetPath -ne $installedExe) { throw 'Shortcut points to the wrong executable.' }
         $report.checks += $phase

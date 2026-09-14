@@ -20,6 +20,7 @@ const path = require('node:path');
     await page.goto(url, { waitUntil: 'networkidle' });
     await page.waitForFunction(() => document.querySelector('#model-name')?.value);
     assert.equal(await page.locator('#production-line').count(), 1);
+    if (await page.locator('#edit-model').count()) await page.locator('#edit-model').click();
     await page.locator('#until-days').fill('0.05');
     await page.locator('#warmup-days').fill('0.005');
     await page.locator('#replications').fill('2');
@@ -42,11 +43,13 @@ const path = require('node:path');
     await page.screenshot({ path: path.join(output, 'studio-desktop.png'), fullPage: true });
     assert.notEqual((await page.locator('#metric-throughput').textContent()).trim(), '—');
 
+    if (await page.locator('#nav-results').count()) await page.locator('#nav-results').click();
     await page.locator('#run-study').click();
     await page.waitForFunction(() => !document.querySelector('#study-summary').hidden, null, { timeout: 60000 });
     assert.match(await page.locator('#version-rows').textContent(), /\d/);
     await page.evaluate(() => scrollTo(0, 0));
     await page.screenshot({ path: path.join(output, 'studio-results.png'), fullPage: true });
+    if (await page.locator('#close-results').count()) await page.locator('#close-results').click();
 
     const downloadReady = page.waitForEvent('download');
     await page.locator('#export-session').click();
@@ -60,9 +63,11 @@ const path = require('node:path');
     assert.equal(await page.locator('#ai-api-key').inputValue(), '');
     await page.keyboard.press('Escape');
 
+    if (await page.locator('#nav-results').count()) await page.locator('#nav-results').click();
     const restoring = page.waitForResponse(r => r.url().endsWith('/restore') && r.request().method() === 'POST');
     await page.locator('.version-restore').last().click();
     const restored = await (await restoring).json();
+    if (await page.locator('#results-dialog[open]').count()) await page.locator('#close-results').click();
     assert.equal(restored.versions.length, 3);
     assert.equal(await page.locator('#until-days').inputValue(), '30');
     const importing = page.waitForResponse(r => r.url().endsWith('/versions') && r.request().method() === 'POST');

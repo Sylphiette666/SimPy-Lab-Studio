@@ -46,6 +46,17 @@ def make_agent(monkeypatch, *, base_url=""):
     ), client
 
 
+def response_output(proposal):
+    return [
+        SimpleNamespace(
+            type="message",
+            role="assistant",
+            status="completed",
+            content=[SimpleNamespace(type="output_text", text=proposal.model_dump_json())],
+        )
+    ]
+
+
 def arguments():
     return {
         "config": case_a_config().model_dump(mode="json"),
@@ -63,13 +74,14 @@ def test_official_structured_response_uses_no_store(monkeypatch, base_url):
     proposal = AdjustmentProposal(
         note="提高第一台可用率", changes=[{"path": "machines.0.availability", "value": 0.9}]
     )
-    client.responses.parse.return_value = SimpleNamespace(
-        status="completed", output_parsed=proposal
+    client.responses.create.return_value = SimpleNamespace(
+        status="completed", output=response_output(proposal)
     )
     assert agent.propose(**arguments()) == proposal
-    kwargs = client.responses.parse.call_args.kwargs
+    kwargs = client.responses.create.call_args.kwargs
     assert kwargs["store"] is False
-    assert kwargs["text_format"] is AdjustmentProposal
+    assert kwargs["text"]["format"]["schema"] == AdjustmentProposal.model_json_schema()
+    assert kwargs["text"]["format"]["strict"] is True
     assert "secret" not in str(kwargs)
     assert "buffers.0.capacity" not in kwargs["input"][1]["content"]
     assert "machines.0.availability" in kwargs["input"][1]["content"]
@@ -78,10 +90,10 @@ def test_official_structured_response_uses_no_store(monkeypatch, base_url):
     assert not client.chat.completions.create.called
 
 
-@pytest.mark.parametrize("status,parsed", [("incomplete", None), ("completed", None)])
-def test_official_rejects_incomplete_or_refusal(monkeypatch, status, parsed):
+@pytest.mark.parametrize("status", ["incomplete", "completed"])
+def test_official_rejects_incomplete_or_empty_response(monkeypatch, status):
     agent, client = make_agent(monkeypatch)
-    client.responses.parse.return_value = SimpleNamespace(status=status, output_parsed=parsed)
+    client.responses.create.return_value = SimpleNamespace(status=status, output=[])
     with pytest.raises(StudioAIError):
         agent.propose(**arguments())
 
@@ -103,7 +115,7 @@ def test_compatible_chat_validates_json_and_retains_real_call(monkeypatch):
     assert client.chat.completions.create.call_args.kwargs["response_format"] == {
         "type": "json_object"
     }
-    assert not client.responses.parse.called
+    assert not client.responses.create.called
 
 
 @pytest.mark.parametrize(
@@ -157,8 +169,8 @@ def test_explicit_protocol_override_uses_selected_api(monkeypatch, base_url, api
         )
     )
     proposal = AdjustmentProposal(note="无需调整", changes=[])
-    client.responses.parse.return_value = SimpleNamespace(
-        status="completed", output_parsed=proposal
+    client.responses.create.return_value = SimpleNamespace(
+        status="completed", output=response_output(proposal)
     )
     client.chat.completions.create.return_value = SimpleNamespace(
         choices=[
@@ -168,7 +180,7 @@ def test_explicit_protocol_override_uses_selected_api(monkeypatch, base_url, api
         ]
     )
     assert agent.propose(**arguments()) == proposal
-    assert client.responses.parse.called == responses
+    assert client.responses.create.called == responses
     assert client.chat.completions.create.called != responses
     assert agent.settings.audit()["api_format"] == api_format
     assert "private-key" not in str(agent.settings.audit())

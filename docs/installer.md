@@ -1,6 +1,6 @@
 # 安装与分享说明
 
-把 **`SimPy-Lab-Studio-Setup-1.0.0.exe`** 发给对方即可，也可以分享 [GitHub 下载页](https://github.com/Sylphiette666/SimPy-Lab-Studio/releases/latest)。无需发送源代码、Python 环境、CMD 文件或自己的实验目录。
+把 **`SimPy-Lab-Studio-Setup-1.1.0.exe`** 发给对方即可，也可以分享 [GitHub 下载页](https://github.com/Sylphiette666/SimPy-Lab-Studio/releases/latest)。无需发送源代码、Python 环境、CMD 文件或自己的实验目录。
 
 ![中文安装向导](images/installer-welcome.png)
 
@@ -54,6 +54,8 @@
 ## 本次验证
 
 使用最终安装程序，实际验证全新安装、覆盖安装、桌面和开始菜单快捷方式、Windows 卸载登记、安装后 EXE 的真实短时仿真、卸载清理以及原有用户 JSON 数据保持不变。测试使用独立安装目录，结束后卸载测试副本。
+
+v1.1.0 还验证了先安装第一版 1.0.0、再使用 1.1.0 安装程序覆盖升级的流程，核对安装登记和 EXE 版本号一致。开发者可给 `tools/check_installer.ps1` 传入 `-BaselineInstallerPath` 指定旧版安装包。
 
 本机已有 WebView2，已验证自动检测并跳过安装组件。缺失时调用的微软引导程序已经验证签名，但未卸载本机共享组件来模拟缺失环境。
 

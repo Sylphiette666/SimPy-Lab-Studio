@@ -1,6 +1,6 @@
 ; SimPy Lab Studio installer. Compile with tools/build_installer.ps1.
 #ifndef AppVersion
-  #define AppVersion "1.0.0"
+  #define AppVersion "1.1.0"
 #endif
 #ifndef AppExe
   #define AppExe "..\dist\SimPy Lab Studio.exe"

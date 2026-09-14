@@ -13,7 +13,7 @@ const state = {
   frames: [], preview: null, frameIndex: 0, playing: false, animation: 0,
   lastTick: 0, elapsed: 0, pendingMessages: [], generation: 0,
   aiProfiles: null, aiEditorId: null, aiDrafts: new Map(), aiSaving: false,
-  requestAI: null,
+  requestAI: null, startingRuns: new Map(),
 };
 const labels = {
   cycle_time_seconds: "加工时间", availability: "可用率", mttr_seconds: "平均维修时间",
@@ -113,6 +113,7 @@ function persistSession() {
   try { localStorage.setItem(SESSION_KEY, state.session.id); } catch { /* Browser storage may be disabled. */ }
 }
 function hasPending(kind) {
+  if (state.startingRuns.has(`${state.session?.id}/${state.session?.active_version_id}/${kind}`)) return true;
   return state.session?.runs.some((run) => run.version_id === state.session.active_version_id &&
     run.kind === kind && ["queued", "running"].includes(run.status));
 }
@@ -127,7 +128,8 @@ function updateControls() {
   $("edit-breaks").disabled = unavailable;
   if ($("open-experiments")) $("open-experiments").disabled = unavailable;
   document.querySelectorAll("#model-body input, #model-body select").forEach((input) => {
-    const paperCapacity = input.id.startsWith("buffer-") && input.id.endsWith("-capacity") && $("model-mode").value === "paper";
+    const paperCapacity = $("model-mode").value === "paper" &&
+      ((input.id.startsWith("buffer-") && input.id.endsWith("-capacity")) || input.dataset.paperLocked === "true");
     input.disabled = unavailable || paperCapacity;
   });
   $("model-body").setAttribute("aria-busy", String(state.busy || state.adjusting));
@@ -137,6 +139,8 @@ function updateControls() {
   for (const button of document.querySelectorAll(".version-restore")) button.disabled = unavailable;
   text("apply-model", state.dirty ? "应用修改并预览 →" : "保存模型并预览 →");
   text("save-status", state.dirty ? "有未应用的模型修改" : "模型与结果保存在本机");
+  window.StudioWorkspace?.sync();
+  window.StudioTopology?.sync();
 }
 function setDirty() { state.dirty = true; updateControls(); }
 function renderAI() {
@@ -219,12 +223,13 @@ function renderEditor(config, mode) {
       makeInput("转运 / s", `buffer-${index}-delay_seconds`, buffer.delay_seconds, {min: "0"}));
     buffers.append(row);
   });
+  window.StudioTopology?.render(config);
   updateMode(); renderBreakSummary(); showError("model-error", null); updateControls();
 }
 function updateMode() {
   const paper = $("model-mode").value === "paper";
   document.querySelectorAll('[id^="buffer-"][id$="-capacity"]').forEach((input) => { input.disabled = paper; });
-  text("mode-note", paper ? "保留案例一设备顺序与容量为 5 的缓冲区。" : "可调整缓冲容量；可导入最多 12 台设备的串行模型。");
+  text("mode-note", paper ? "保留案例一设备顺序与容量为 5 的缓冲区；添加设备将切换为自定义实验。" : "可添加、移除或重命名设备与配套缓冲容器；最多 12 台串联设备。");
 }
 function readDraft() {
   const config = clone(state.draft);
@@ -241,20 +246,34 @@ function readDraft() {
   config.replications = value("replications"); config.base_seed = value("base-seed");
   config.breaks = clone(state.breaks);
   config.machines.forEach((machine, index) => {
+    if ($(`machine-${index}-name`)) machine.name = $(`machine-${index}-name`).value.trim();
     for (const key of ["cycle_time_seconds", "availability", "mttr_seconds", "idle_power_kw", "processing_power_kw"]) {
       machine[key] = value(`machine-${index}-${key}`) / (key === "availability" ? 100 : 1);
     }
   });
   config.buffers.forEach((buffer, index) => {
+    if ($(`buffer-${index}-name`)) buffer.name = $(`buffer-${index}-name`).value.trim();
     buffer.capacity = value(`buffer-${index}-capacity`);
     buffer.delay_seconds = value(`buffer-${index}-delay_seconds`);
   });
   if (config.warmup_seconds >= config.until_seconds) throw new Error("预热时长必须小于仿真时长。");
+  for (const [items, label] of [[config.machines, "设备"], [config.buffers, "容器"]]) {
+    if (items.some((item) => !item.name || item.name.length > 80)) throw new Error(`${label}名称须为 1–80 个字符。`);
+    if (new Set(items.map((item) => item.name)).size !== items.length) throw new Error(`${label}名称不能重复。`);
+  }
   return config;
 }
 async function applyModel() {
-  if (!$("model-form").reportValidity()) return;
-  const config = readDraft(); const mode = $("model-mode").value;
+  if (!$("model-form").checkValidity()) {
+    window.StudioWorkspace?.openModel(); $("model-form").reportValidity(); return;
+  }
+  let config;
+  try { config = readDraft(); }
+  catch (error) {
+    window.StudioWorkspace?.openModel(); showError("model-error", error); throw error;
+  }
+  const mode = $("model-mode").value;
+  window.StudioWorkspace?.beginPreview();
   state.busy = true; pause(); updateControls();
   try {
     if (JSON.stringify(config) !== JSON.stringify(activeVersion().config) || mode !== activeVersion().mode) {
@@ -265,6 +284,8 @@ async function applyModel() {
       toast("修改已保存为新版本，正在生成预览。");
     } else state.dirty = false;
     await startRun("preview");
+  } catch (error) {
+    window.StudioWorkspace?.openModel(); throw error;
   } finally { state.busy = false; updateControls(); }
 }
 function acceptSession(session) {
@@ -276,7 +297,7 @@ function acceptSession(session) {
   }
   const version = activeVersion();
   renderEditor(version.config, version.mode);
-  text("version-badge", `V${session.versions.length - 1} · ${version.mode === "paper" ? "论文模式" : "自定义模式"}`);
+  text("version-badge", `V${session.versions.findIndex((item) => item.id === version.id)} · ${version.mode === "paper" ? "论文模式" : "自定义模式"}`);
   text("active-label", versionName(version));
   if (previousHead !== session.active_version_id) resetReplay();
   renderMessages(); renderVersions(); updateControls();
@@ -403,6 +424,7 @@ function renderFrame() {
   drawSparkline("spark-throughput", "throughput_per_hour", "#6d9a59");
   drawSparkline("spark-wip", "average_wip", "#9cab67");
   drawSparkline("spark-energy", "specific_energy_kwh_per_part", "#b4a268");
+  window.StudioWorkspace?.frame(frame);
 }
 function resetReplay() {
   pause(); state.frames = []; state.preview = null; state.frameIndex = 0;
@@ -421,6 +443,7 @@ function loadPreview(result, autoplay = false) {
   text("replay-note", `实际状态采样 · 预览 ${duration}${result.truncated ? ` / 完整实验 ${total}` : ""} · ${state.frames.length} 帧。帧间可能发生多个事件；最终指标请评估完整方案。`);
   $("replay-note").title = result.description || "";
   text("simulation-status", "预览就绪"); $("simulation-status").className = "status-pill running";
+  window.StudioWorkspace?.previewLoaded();
   renderFrame();
   if (autoplay && !empty) play();
 }
@@ -428,13 +451,15 @@ function pause() {
   state.playing = false; cancelAnimationFrame(state.animation);
   text("play-pause", "▶"); $("play-pause").setAttribute("aria-label", "播放仿真回放");
   if (state.frames.length) text("simulation-status", state.frameIndex >= state.frames.length - 1 ? "回放完成" : "回放已暂停");
+  window.StudioWorkspace?.sync();
 }
 function play() {
-  if (!state.frames.length || state.adjusting) return;
+  if (!state.frames.length || state.adjusting || hasPending("preview")) return;
   if (state.frameIndex >= state.frames.length - 1) state.frameIndex = 0;
   state.playing = true; state.lastTick = performance.now(); state.elapsed = 0;
   text("play-pause", "Ⅱ"); $("play-pause").setAttribute("aria-label", "暂停仿真回放");
   text("simulation-status", "正在回放");
+  window.StudioWorkspace?.sync();
   const tick = (now) => {
     if (!state.playing) return;
     state.elapsed += Math.min(250, now - state.lastTick) * Number($("playback-speed").value);
@@ -442,7 +467,7 @@ function play() {
     if (state.elapsed >= 100) {
       const steps = Math.floor(state.elapsed / 100); state.elapsed %= 100;
       state.frameIndex = Math.min(state.frames.length - 1, state.frameIndex + steps); renderFrame();
-      if (state.frameIndex >= state.frames.length - 1) { pause(); return; }
+      if (state.frameIndex >= state.frames.length - 1) { pause(); window.StudioWorkspace?.complete(); return; }
     }
     state.animation = requestAnimationFrame(tick);
   };
@@ -507,11 +532,21 @@ async function watchRun(run, autoplay = true) {
 }
 async function startRun(kind, reuse = false) {
   const version = activeVersion();
-  const existing = [...state.session.runs].reverse().find((run) => run.version_id === version.id && run.kind === kind &&
-    (["queued", "running"].includes(run.status) || (reuse && run.status === "succeeded")));
-  const run = existing || await api(sessionPath("/runs"), {method: "POST", body: {version_id: version.id, kind}});
-  updateRun(run);
-  watchRun(run).catch(() => {});
+  const sessionId = state.session.id; const generation = state.generation;
+  const requestKey = `${sessionId}/${version.id}/${kind}`;
+  if (state.startingRuns.has(requestKey)) return state.startingRuns.get(requestKey);
+  if (kind === "preview") { pause(); window.StudioWorkspace?.previewStarting(); }
+  const request = (async () => {
+    const existing = [...state.session.runs].reverse().find((run) => run.version_id === version.id && run.kind === kind &&
+      (["queued", "running"].includes(run.status) || (reuse && run.status === "succeeded")));
+    const run = existing || await api(`/sessions/${sessionId}/runs`, {method: "POST", body: {version_id: version.id, kind}});
+    if (generation !== state.generation || sessionId !== state.session.id) return;
+    updateRun(run);
+    watchRun(run).catch(() => {});
+  })();
+  state.startingRuns.set(requestKey, request); updateControls();
+  try { return await request; }
+  finally { state.startingRuns.delete(requestKey); updateControls(); }
 }
 async function recoverRuns() {
   const generation = state.generation;
@@ -594,6 +629,7 @@ function renderVersions() {
     const config = current.config || activeVersion().config;
     text("study-summary", `当前方案已完成 ${config.replications} 次独立重复 · ${durationLabel(config.until_seconds)}（含 ${durationLabel(config.warmup_seconds)}预热）· ${format(config.confidence_level * 100, 0)}% 正态近似置信区间。比较不同版本时，请同时核对时长、预热和随机种子。`);
   }
+  window.StudioWorkspace?.renderResults();
   updateControls();
 }
 function openInfo(title, contents) {
@@ -645,7 +681,7 @@ function renderMessages() {
 async function adjustModel() {
   const prompt = $("prompt").value.trim(); if (!prompt) return;
   if (!state.ai?.available) { await openSettings(); toast("保存模型连接后即可发送这条提示词。"); return; }
-  if (state.dirty) { toast("请先应用左侧模型修改，再让 AI 根据当前版本调整。"); return; }
+  if (state.dirty) { toast("请先在“输入模型”中应用修改，再让 AI 根据当前版本调整。"); return; }
   const previousHead = state.session.active_version_id;
   state.adjusting = true; state.requestAI = clone(state.ai); pause(); renderAI();
   state.pendingMessages = [{role: "user", content: prompt, pending: true}]; renderMessages();
@@ -870,7 +906,11 @@ async function openExperiments() {
 }
 
 bind("model-form", "submit", applyModel, "model-error");
-bind("run-preview", "click", async () => state.dirty ? applyModel() : startRun("preview"));
+bind("run-preview", "click", async () => {
+  if (state.dirty) return applyModel();
+  window.StudioWorkspace?.beginPreview();
+  return startRun("preview");
+});
 bind("run-study", "click", async () => {
   if (state.dirty) { toast("请先应用模型修改，再评估当前方案。"); return; }
   await startRun("study"); renderVersions();
