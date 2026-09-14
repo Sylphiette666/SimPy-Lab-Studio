@@ -4,7 +4,9 @@ SimPy Lab Studio 1.0.0 面向 Windows 10/11 x64。它将制造仿真、模型编
 
 ## 安装和启动
 
-下载发布页中的 Windows ZIP，解压得到“SimPy Lab Studio”文件夹。该文件夹只包含 `SimPy Lab Studio.exe`。双击即可使用，不需要 Python、命令行或手动启动本地服务。
+推荐下载发布页中的 `SimPy-Lab-Studio-Setup-1.0.0.exe`，按中文向导安装。它会创建开始菜单入口、可选桌面快捷方式和卸载入口，并在缺少 WebView2 时联网安装该组件。详见 [安装与分享说明](installer.md)。
+
+便携版仍可下载 Windows ZIP，解压得到“SimPy Lab Studio”文件夹。该文件夹只包含 `SimPy Lab Studio.exe`。两种版本都不需要 Python、命令行或手动启动本地服务。
 
 EXE 内置软件图标、界面资源、Python 运行库和应用依赖。首次启动时会将运行库临时解压到系统临时目录，因此比后续操作慢。界面使用 Windows WebView2 组件，显示在软件自己的窗口里，没有浏览器地址栏或标签页。若系统缺少组件，请从 [Microsoft WebView2 官方页面](https://developer.microsoft.com/microsoft-edge/webview2/)安装 Runtime 后重新打开。
 
@@ -35,7 +37,7 @@ EXE 内置软件图标、界面资源、Python 运行库和应用依赖。首次
 └── server.log           后台服务日志
 ```
 
-使用“文件 → 打开实验数据目录”进入。更新软件只需关闭旧版并替换 EXE。备份实验时可导出 ZIP；备份整个本机工作空间时请先关闭软件，再复制数据目录。浏览器版的数据仍在它原来的输出目录，两者不会互相覆盖；可以用模型 JSON 将初始配置导入桌面版。
+使用“文件 → 打开实验数据目录”进入。安装版更新时先关闭旧版，再运行新版安装程序；便携版可直接替换 EXE。卸载安装版会保留实验数据。备份实验时可导出 ZIP；备份整个本机工作空间时请先关闭软件，再复制数据目录。浏览器版的数据仍在它原来的输出目录，两者不会互相覆盖；可以用模型 JSON 将初始配置导入桌面版。
 
 API 密钥仅保留在当前进程内存中；关闭软件后重新填写。修改配置时留空会保留相同 API 地址的现有密钥，更换地址须重新填写。可以勾选移除密钥。OpenAI 网页登录和 ChatGPT 网页地址不能代替 API 密钥与 API Base URL。
 

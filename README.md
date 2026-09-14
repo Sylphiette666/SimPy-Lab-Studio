@@ -6,14 +6,18 @@
 
 ## 下载与启动
 
-从 [Releases 下载 Windows 版](https://github.com/Sylphiette666/SimPy-Lab-Studio/releases/latest)，解压后双击：
+分享给其他人时，推荐从 [Releases 下载安装程序](https://github.com/Sylphiette666/SimPy-Lab-Studio/releases/latest)中的 **`SimPy-Lab-Studio-Setup-1.0.0.exe`**。双击进入中文安装向导，选择位置和快捷方式即可完成安装。安装程序会检测 WebView2，缺失时使用微软官方程序联网安装；电脑已有 WebView2 时可以离线安装。
+
+安装完成后可从桌面或开始菜单启动，在 Windows“已安装的应用”中卸载。卸载保留实验数据。详见 [安装和分享说明](docs/installer.md)。
+
+也可以选择便携版 ZIP，解压后双击：
 
 ```text
 SimPy Lab Studio/
 └── SimPy Lab Studio.exe
 ```
 
-软件文件夹中只有一个 EXE，图标和界面资源均已内置。无需安装 Python、运行 CMD 或先启动服务器；后台服务随软件自动启动，主界面显示在独立桌面窗口中。退出软件会停止它启动的服务。
+便携版文件夹中只有一个 EXE，图标和界面资源均已内置。安装版还会添加卸载程序和使用说明。两种版本均无需安装 Python、运行 CMD 或先启动服务器；后台服务随软件自动启动，主界面显示在独立桌面窗口中。退出软件会停止它启动的服务。
 
 支持 Windows 10/11 x64，需要系统的 Microsoft Edge WebView2 Runtime；不要求打开 Edge 浏览器。缺失时从 [Microsoft 官方页面安装](https://developer.microsoft.com/microsoft-edge/webview2/)。首次打开单文件 EXE 需要解压内置运行库，请稍候。本开源发行版尚未进行商业代码签名。
 
@@ -57,6 +61,9 @@ python -m venv .venv
 
 # 构建单文件 EXE，产物位于 dist/SimPy Lab Studio.exe
 .venv\Scripts\python.exe tools/build_desktop.py
+
+# 在装有 Inno Setup 6.7+ 的 Windows 上构建安装程序
+.\tools\build_installer.ps1 -Python .venv\Scripts\python.exe
 
 # 单元与集成测试
 .venv\Scripts\python.exe -m pytest
