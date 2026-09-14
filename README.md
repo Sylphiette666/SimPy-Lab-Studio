@@ -1,5 +1,7 @@
 # SimPy Lab Studio
 
+[下载本分支整理好的源码 ZIP](source-packages/SimPy-Lab-Studio-v1.0.0-source.zip?raw=true) · [源码包说明与校验](source-packages/README.md)
+
 带独立窗口的 Windows 制造仿真软件：编辑生产线模型，观看 SimPy 状态回放，随时切换 AI 模型，用自然语言生成新方案，并通过重复实验比较结果。
 
 ![软件图标](src/simlab/static/studio/app.png)
