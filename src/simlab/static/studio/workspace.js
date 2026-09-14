@@ -181,6 +181,29 @@
   $("close-model").addEventListener("click", () => $("model-dialog").close());
   for (const id of ["nav-results", "view-final-results"]) $(id).addEventListener("click", openResults);
   $("close-results").addEventListener("click", () => $("results-dialog").close());
+  for (const id of ["model-dialog", "results-dialog"]) {
+    const dialog = $(id);
+    let pressedOutside = false;
+    const isOutside = (event) => {
+      const rect = dialog.getBoundingClientRect();
+      return event.target === dialog && (event.clientX < rect.left || event.clientX > rect.right
+        || event.clientY < rect.top || event.clientY > rect.bottom);
+    };
+    // Require both ends of the click on the backdrop. Dragging from an input
+    // or selecting text out of the panel must not dismiss it or discard a draft.
+    dialog.addEventListener("pointerdown", (event) => {
+      pressedOutside = event.isPrimary && event.button === 0 && isOutside(event);
+    });
+    dialog.addEventListener("pointercancel", () => { pressedOutside = false; });
+    dialog.addEventListener("close", () => { pressedOutside = false; });
+    dialog.addEventListener("click", (event) => {
+      const dismiss = pressedOutside && isOutside(event);
+      pressedOutside = false;
+      if (dismiss) {
+        event.preventDefault(); event.stopPropagation(); dialog.close();
+      }
+    });
+  }
   $("nav-preview").addEventListener("click", () => { $("model-dialog").close(); $("results-dialog").close(); $("run-preview").focus(); });
   $("download-report").addEventListener("click", downloadReport);
   $("fullscreen-toggle").addEventListener("click", () => document.body.classList.contains("immersive") ? exitFullscreen() : enterFullscreen());

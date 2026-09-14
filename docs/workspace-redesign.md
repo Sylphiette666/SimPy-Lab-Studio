@@ -1,6 +1,8 @@
-# 仿真工作台界面改版
+# 仿真工作台测试版
 
 本分支 `frontend/simulation-workspace` 将仿真画面作为主要工作区域，把输入模型编辑与结果评估放到按需打开的窗口中，右侧集中动态指标与运行助手。原有模型、仿真、AI 参数校验、持久化和导出接口继续使用。
+
+本分支现统一称为“测试版”，以后覆盖更新同一份测试版软件和源码包，只额外保留第一版。界面预览、设备扩展、AI 修复已包含在测试版中，不再各存一个成品目录。
 
 ## 第一版与修改范围
 
@@ -28,6 +30,8 @@
 点击“编辑模型”或侧边导航“模型”，打开输入模型窗口。设备参数、缓冲容量与转运时间、论文/自定义模式、每周停产时段、时长、预热、重复次数、种子、JSON 导入导出均保留。修改后点击“应用修改并预览”；已有模型无需修改时，直接点击“运行预览”。
 
 打开或关闭模型窗口不会替用户提交修改。未应用的修改继续标记为草稿，发送 AI 指令前需先应用。
+
+输入模型和运行结果窗口都可点击外侧遮罩返回主界面，关闭按钮和 Esc 仍可使用。关闭后再打开输入模型保留本次应用进程中的草稿；不会自动保存、提交或重新运行。点击窗口内空白、滚动或从窗口内拖动到外侧不关闭窗口，遮罩点击不会穿透触发主界面按钮。评估任务在窗口关闭后继续执行。
 
 #### 添加设备与缓冲容器
 
@@ -147,12 +151,12 @@ node tools/check_workspace_browser.cjs
 .venv\Scripts\python.exe -m pytest
 ```
 
-本分支没有修改打包脚本或第一版发行文件。需要自行构建时可使用原有构建入口，产物保留在本地 `dist/`，避免覆盖已保存的第一版 EXE 或安装包。单独构建界面预览版可指定新的输出位置：
+本分支没有修改打包脚本或第一版发行文件。构建测试版先输出到固定暂存目录 `dist/test-edition`，验证成功后覆盖交付目录 `SimPy Lab Studio 测试版/SimPy Lab Studio.exe`，不另建以功能命名的版本目录：
 
 ```powershell
 .venv\Scripts\python.exe -m pip install -e ".[desktop,desktop-build,dev]"
 .venv\Scripts\python.exe -c "from tools.build_desktop import licenses; licenses()"
-.venv\Scripts\python.exe -m PyInstaller --noconfirm --distpath dist/workspace-preview --workpath build/workspace-preview desktop.spec
+.venv\Scripts\python.exe -m PyInstaller --noconfirm --distpath dist/test-edition --workpath build/test-edition desktop.spec
 ```
 
-预览版 EXE 沿用原有桌面宿主、图标和自动服务生命周期。原宿主采用单实例机制，因此打开另一版前需先关闭正在运行的版本；实验数据格式仍然兼容。为保持页面改版范围，未更改原生宿主的版本号或单实例逻辑，界面内以“工作台预览版”区分。
+测试版 EXE 沿用原有桌面宿主、图标和自动服务生命周期。原宿主采用单实例机制，因此打开另一版前需先关闭正在运行的版本；实验数据格式仍然兼容。原生宿主的版本号或单实例逻辑未更改，界面内以“测试版”区分。
