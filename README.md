@@ -1,5 +1,7 @@
 # SimPy Lab Studio
 
+[下载本分支整理好的源码 ZIP](source-packages/SimPy-Lab-Studio-workspace-preview-source.zip?raw=true) · [源码包说明与校验](source-packages/README.md)
+
 > 当前分支 `frontend/simulation-workspace` 为仿真工作台界面预览版。中央仿真画面、全屏预览、旁侧指标与运行助手、结束后的方案评估均使用原有仿真接口；核心 Python 实现保持不变。设计来源、交互边界与验证方法见 [工作台改版说明](docs/workspace-redesign.md)。
 
 带独立窗口的 Windows 制造仿真软件：编辑生产线模型，观看 SimPy 状态回放，随时切换 AI 模型，用自然语言生成新方案，并通过重复实验比较结果。
