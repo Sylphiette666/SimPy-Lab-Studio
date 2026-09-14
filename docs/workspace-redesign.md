@@ -7,7 +7,7 @@
 - 第一版保留在 `main`，基线提交为 `acd5ac0523dbfe4b54613e141fd575ea630738e9`。
 - 第一版独立 EXE、`SimPy-Lab-Studio-Setup-1.0.0.exe` 安装程序及 [v1.0.0 发布记录](https://github.com/Sylphiette666/SimPy-Lab-Studio/releases/tag/v1.0.0)保留，不由此分支覆盖。
 - 页面实现涉及 `src/simlab/static/studio/index.html`、`app.js`，以及新增的 `workspace.css`、`workspace.js`、`topology.js`；原有 `style.css` 保留共用组件样式。附带更新说明、截图和浏览器验证脚本。
-- 核心 Python 源码保持不变，包括 SimPy 引擎、指标计算、模型约束、LLM 调用、API 路由及桌面宿主。本次没有新增发布标签，也没有把界面改版合并到 `main`。
+- 初始界面改版保留原 Python 实现。后续 [AI 响应完整性修复](ai-response-fix.md) 仅调整 `studio_ai.py` 中的请求与响应处理；SimPy 引擎、指标计算、模型约束、API 路由及桌面宿主保持不变。本分支没有覆盖第一版发布标签，也没有合并到 `main`。
 
 ## 设计参考与应用
 
