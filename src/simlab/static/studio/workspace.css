@@ -240,3 +240,15 @@ body.studio-workspace.immersive { grid-template-rows:46px 0 auto minmax(0,1fr) 2
   .studio-workspace .global-notice { margin:10px; }
 }
 @media (prefers-reduced-motion:reduce) { .studio-workspace * { animation:none!important; transition:none!important; scroll-behavior:auto!important; } }
+.studio-workspace .topology-add { width:100%; margin:10px 0 7px; border-style:dashed; border-color:#99b7a3; background:#f3f8ef; color:#286448; }
+.studio-workspace .topology-summary { margin:0 0 12px; font-size:10px; }
+.studio-workspace .topology-wide { grid-column:1/-1; }
+.studio-workspace .topology-machine-actions { padding:0 13px 12px; }
+.studio-workspace .topology-remove { font-size:10px; color:#98654d; }
+.studio-workspace .topology-remove:disabled { text-decoration:none; }
+.studio-workspace .topology-name { min-width:0; }
+.studio-workspace .equipment-modal { width:540px; }
+.studio-workspace .topology-description { margin:12px 0 16px; line-height:1.8; }
+.studio-workspace .topology-section-title { padding:16px 0 10px; color:#345e40; }
+.studio-workspace .topology-defaults { margin-top:8px; font-size:10px; }
+.studio-workspace .topology-link-preview { font-size:11px; line-height:1.8; padding:10px; margin-top:14px; border-radius:7px; background:#edf4e8; overflow-wrap:anywhere; }

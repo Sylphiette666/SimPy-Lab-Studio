@@ -128,7 +128,8 @@ function updateControls() {
   $("edit-breaks").disabled = unavailable;
   if ($("open-experiments")) $("open-experiments").disabled = unavailable;
   document.querySelectorAll("#model-body input, #model-body select").forEach((input) => {
-    const paperCapacity = input.id.startsWith("buffer-") && input.id.endsWith("-capacity") && $("model-mode").value === "paper";
+    const paperCapacity = $("model-mode").value === "paper" &&
+      ((input.id.startsWith("buffer-") && input.id.endsWith("-capacity")) || input.dataset.paperLocked === "true");
     input.disabled = unavailable || paperCapacity;
   });
   $("model-body").setAttribute("aria-busy", String(state.busy || state.adjusting));
@@ -139,6 +140,7 @@ function updateControls() {
   text("apply-model", state.dirty ? "应用修改并预览 →" : "保存模型并预览 →");
   text("save-status", state.dirty ? "有未应用的模型修改" : "模型与结果保存在本机");
   window.StudioWorkspace?.sync();
+  window.StudioTopology?.sync();
 }
 function setDirty() { state.dirty = true; updateControls(); }
 function renderAI() {
@@ -221,12 +223,13 @@ function renderEditor(config, mode) {
       makeInput("转运 / s", `buffer-${index}-delay_seconds`, buffer.delay_seconds, {min: "0"}));
     buffers.append(row);
   });
+  window.StudioTopology?.render(config);
   updateMode(); renderBreakSummary(); showError("model-error", null); updateControls();
 }
 function updateMode() {
   const paper = $("model-mode").value === "paper";
   document.querySelectorAll('[id^="buffer-"][id$="-capacity"]').forEach((input) => { input.disabled = paper; });
-  text("mode-note", paper ? "保留案例一设备顺序与容量为 5 的缓冲区。" : "可调整缓冲容量；可导入最多 12 台设备的串行模型。");
+  text("mode-note", paper ? "保留案例一设备顺序与容量为 5 的缓冲区；添加设备将切换为自定义实验。" : "可添加、移除或重命名设备与配套缓冲容器；最多 12 台串联设备。");
 }
 function readDraft() {
   const config = clone(state.draft);
@@ -243,15 +246,21 @@ function readDraft() {
   config.replications = value("replications"); config.base_seed = value("base-seed");
   config.breaks = clone(state.breaks);
   config.machines.forEach((machine, index) => {
+    if ($(`machine-${index}-name`)) machine.name = $(`machine-${index}-name`).value.trim();
     for (const key of ["cycle_time_seconds", "availability", "mttr_seconds", "idle_power_kw", "processing_power_kw"]) {
       machine[key] = value(`machine-${index}-${key}`) / (key === "availability" ? 100 : 1);
     }
   });
   config.buffers.forEach((buffer, index) => {
+    if ($(`buffer-${index}-name`)) buffer.name = $(`buffer-${index}-name`).value.trim();
     buffer.capacity = value(`buffer-${index}-capacity`);
     buffer.delay_seconds = value(`buffer-${index}-delay_seconds`);
   });
   if (config.warmup_seconds >= config.until_seconds) throw new Error("预热时长必须小于仿真时长。");
+  for (const [items, label] of [[config.machines, "设备"], [config.buffers, "容器"]]) {
+    if (items.some((item) => !item.name || item.name.length > 80)) throw new Error(`${label}名称须为 1–80 个字符。`);
+    if (new Set(items.map((item) => item.name)).size !== items.length) throw new Error(`${label}名称不能重复。`);
+  }
   return config;
 }
 async function applyModel() {

@@ -10,6 +10,7 @@
   <link rel="stylesheet" href="/static/workspace.css">
   <script src="/static/app.js" defer></script>
   <script src="/static/workspace.js" defer></script>
+  <script src="/static/topology.js" defer></script>
 </head>
 <body class="studio-workspace">
   <header class="app-header">
@@ -69,7 +70,7 @@
       <div class="panel-title"><div><span class="section-number">01</span><h2 id="model-dialog-title">输入模型</h2></div><div class="model-heading-actions"><button id="toggle-model" class="icon-button" aria-expanded="true" aria-controls="model-body" title="收起模型面板">−</button><button id="close-model" type="button" class="icon-button" aria-label="关闭输入模型">×</button></div></div>
       <div id="model-body">
         <div class="model-meta"><label class="field">模型名称<input id="model-name" autocomplete="off" maxlength="100"></label><label class="field">约束模式<select id="model-mode"><option value="paper">论文案例一 · 固定缓冲容量</option><option value="custom">自定义实验 · 可调整容量</option></select></label><p id="mode-note" class="small muted">保留四设备串联结构与原始缓冲区容量。</p></div>
-        <form id="model-form"><div class="editor-section"><h3>加工设备 <span id="machine-count">4 台</span></h3><div id="machine-fields"></div></div><div class="editor-section"><h3>中间缓冲区 <span>容量 / 转运时间</span></h3><div id="buffer-fields"></div></div><div class="editor-section"><h3>实验设置</h3><div class="field-grid"><label class="field">仿真时长 <span>天</span><input id="until-days" type="number" min="0.001" step="any" required></label><label class="field">预热时长 <span>天</span><input id="warmup-days" type="number" min="0" step="any" required></label><label class="field">独立重复次数<input id="replications" type="number" min="1" max="50" step="1" required></label><label class="field">随机种子<input id="base-seed" type="number" min="0" step="1" required></label></div><button type="button" id="edit-breaks" class="text-button">编辑每周停产时段 <span aria-hidden="true">↗</span></button><p id="break-summary" class="small muted"></p></div><div id="model-error" class="notice error" role="alert" hidden></div><div class="editor-footer"><button id="apply-model" type="submit" class="button primary full">应用修改并预览 <span aria-hidden="true">→</span></button><div class="editor-file-actions"><button type="button" id="import-config" class="text-button">导入 JSON</button><span>·</span><button type="button" id="export-config" class="text-button">导出模型</button></div></div></form>
+        <form id="model-form"><div class="editor-section"><h3>加工设备 <span id="machine-count">4 台</span></h3><button id="add-equipment" type="button" class="button topology-add">＋ 添加设备与容器</button><p id="topology-summary" class="small muted topology-summary"></p><div id="machine-fields"></div></div><div class="editor-section"><h3>缓冲容器 <span>容量 / 转运时间</span></h3><div id="buffer-fields"></div></div><div class="editor-section"><h3>实验设置</h3><div class="field-grid"><label class="field">仿真时长 <span>天</span><input id="until-days" type="number" min="0.001" step="any" required></label><label class="field">预热时长 <span>天</span><input id="warmup-days" type="number" min="0" step="any" required></label><label class="field">独立重复次数<input id="replications" type="number" min="1" max="50" step="1" required></label><label class="field">随机种子<input id="base-seed" type="number" min="0" step="1" required></label></div><button type="button" id="edit-breaks" class="text-button">编辑每周停产时段 <span aria-hidden="true">↗</span></button><p id="break-summary" class="small muted"></p></div><div id="model-error" class="notice error" role="alert" hidden></div><div class="editor-footer"><button id="apply-model" type="submit" class="button primary full">应用修改并预览 <span aria-hidden="true">→</span></button><div class="editor-file-actions"><button type="button" id="import-config" class="text-button">导入 JSON</button><span>·</span><button type="button" id="export-config" class="text-button">导出模型</button></div></div></form>
       </div>
     </aside>
   </dialog>
@@ -80,6 +81,38 @@
     <section id="result-evaluation" class="result-evaluation" aria-label="方案分析"></section>
       <section class="panel history-panel"><div class="panel-title"><div><span class="section-number">03</span><h2>方案版本与对比</h2></div><button id="run-study" class="button" disabled>评估当前方案 <span aria-hidden="true">↗</span></button></div><p class="history-description">多次独立仿真，比较均值与置信区间。未评估的版本保留完整修改记录。</p><div id="study-summary" class="study-summary" hidden></div><div class="table-scroll"><table id="version-table"><thead><tr><th>方案 / 修改记录</th><th>产出率 <small>件/h</small></th><th>平均在制品 <small>件</small></th><th>单位能耗 <small>kWh/件</small></th><th><span class="sr-only">操作</span></th></tr></thead><tbody id="version-rows"></tbody></table></div><div class="model-footnote"><span aria-hidden="true">ⓘ</span><span>原料按需补给；在制品包含设备与中间缓冲区，不含原料和成品。<button id="show-assumptions" class="text-button">模型说明</button></span></div></section>
     <div class="modal-actions"><button id="download-report" type="button" class="button primary">导出结果报告 <span aria-hidden="true">↗</span></button></div>
+  </dialog>
+  <dialog id="equipment-dialog" class="modal equipment-modal" aria-labelledby="equipment-title">
+    <form id="equipment-form">
+      <div class="modal-heading"><div><p class="eyebrow">EXTEND PRODUCTION LINE</p><h2 id="equipment-title">添加设备与配套容器</h2></div><button type="button" class="icon-button close-dialog" aria-label="关闭添加窗口">×</button></div>
+      <p class="small muted topology-description">每新增一台设备，配套一个缓冲容器。确认后切换到自定义实验；点击“应用修改并预览”才会保存新方案并运行。</p>
+      <label class="field">插入位置<select id="equipment-position" required></select></label>
+      <h3 class="topology-section-title">加工设备</h3>
+      <div class="field-grid">
+        <label class="field topology-wide">设备名称<input id="equipment-name" maxlength="80" required autocomplete="off"></label>
+        <label class="field">加工时间 / s<input id="equipment-cycle" type="number" min="1" step="any" required></label>
+        <label class="field">可用率 / %<input id="equipment-availability" type="number" min="0.001" max="100" step="any" required></label>
+        <label class="field">平均维修时间 / s<input id="equipment-mttr" type="number" min="0" step="any" required></label>
+        <label class="field">空闲功率 / kW<input id="equipment-idle" type="number" min="0" max="1000000000" step="any" required></label>
+        <label class="field">加工功率 / kW<input id="equipment-processing" type="number" min="0" max="1000000000" step="any" required></label>
+      </div>
+      <p class="small muted topology-defaults">设备参数预填自产线末台设备，请根据实际设备修改。</p>
+      <h3 class="topology-section-title">缓冲容器</h3>
+      <div class="field-grid">
+        <label class="field topology-wide">容器名称<input id="container-name" maxlength="80" required autocomplete="off"></label>
+        <label class="field">容量 / 件<input id="container-capacity" type="number" min="1" max="10000" step="1" value="5" required></label>
+        <label class="field">转运时间 / s<input id="container-delay" type="number" min="0" step="any" value="10" required></label>
+      </div>
+      <p id="equipment-link-preview" class="topology-link-preview"></p>
+      <div id="equipment-error" class="notice error" role="alert" hidden></div>
+      <div class="modal-actions"><button type="button" class="button close-dialog">取消</button><button id="confirm-equipment" type="submit" class="button primary">添加到输入模型</button></div>
+    </form>
+  </dialog>
+  <dialog id="remove-equipment-dialog" class="modal" aria-labelledby="remove-equipment-title">
+    <div class="modal-heading"><h2 id="remove-equipment-title">移除设备与配套容器</h2><button type="button" class="icon-button close-dialog" aria-label="关闭移除窗口">×</button></div>
+    <p id="remove-equipment-description" class="topology-description"></p>
+    <div id="remove-equipment-error" class="notice error" role="alert" hidden></div>
+    <div class="modal-actions"><button type="button" class="button close-dialog">取消</button><button id="confirm-remove-equipment" type="button" class="button primary">从输入模型移除</button></div>
   </dialog>
   <input id="config-file" type="file" accept=".json,application/json" hidden>
   <dialog id="settings-dialog" class="modal ai-settings-modal" aria-labelledby="ai-settings-title">
