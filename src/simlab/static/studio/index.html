@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#123c3b">
+  <title>SimPy Lab Studio · 生产线仿真工作台</title>
+  <link rel="icon" href="/static/app.ico"><link rel="stylesheet" href="/static/style.css">
+  <script src="/static/app.js" defer></script>
+</head>
+<body>
+  <header class="app-header">
+    <a class="brand" href="/" aria-label="SimPy Lab Studio 首页"><span class="brand-symbol" aria-hidden="true">S<span>↗</span></span><span>SimPy Lab <b>Studio</b></span></a>
+    <span class="header-divider"></span><span class="header-context">制造系统 · 实验工作台</span>
+    <div class="header-actions"><span class="local-badge"><i></i> 本地工作空间</span><button id="ai-settings" class="button quiet"><span aria-hidden="true">⚙</span> 模型接入</button><button id="export-session" class="button" disabled><span aria-hidden="true">↗</span> 导出实验</button></div>
+  </header>
+  <div class="workspace-heading"><div><p class="eyebrow">MANUFACTURING SIMULATION</p><h1>让每一次调整，都有数据依据。</h1><p class="subtitle">编辑生产线，观察运行过程，与 AI 一起探索更好的方案。</p></div><div class="workspace-heading-right"><span id="version-badge" class="version-badge">初始化中</span><button id="new-session" class="button quiet">新建实验</button></div></div>
+  <div id="global-error" class="notice error global-notice" role="alert" hidden></div>
+  <main class="workspace">
+    <aside class="panel model-panel" aria-label="初始模型编辑">
+      <div class="panel-title"><div><span class="section-number">01</span><h2>输入模型</h2></div><button id="toggle-model" class="icon-button" aria-expanded="true" aria-controls="model-body" title="收起模型面板">−</button></div>
+      <div id="model-body">
+        <div class="model-meta"><label class="field">模型名称<input id="model-name" autocomplete="off" maxlength="100"></label><label class="field">约束模式<select id="model-mode"><option value="paper">论文案例一 · 固定缓冲容量</option><option value="custom">自定义实验 · 可调整容量</option></select></label><p id="mode-note" class="small muted">保留四设备串联结构与原始缓冲区容量。</p></div>
+        <form id="model-form"><div class="editor-section"><h3>加工设备 <span id="machine-count">4 台</span></h3><div id="machine-fields"></div></div><div class="editor-section"><h3>中间缓冲区 <span>容量 / 转运时间</span></h3><div id="buffer-fields"></div></div><div class="editor-section"><h3>实验设置</h3><div class="field-grid"><label class="field">仿真时长 <span>天</span><input id="until-days" type="number" min="0.001" step="any" required></label><label class="field">预热时长 <span>天</span><input id="warmup-days" type="number" min="0" step="any" required></label><label class="field">独立重复次数<input id="replications" type="number" min="1" max="50" step="1" required></label><label class="field">随机种子<input id="base-seed" type="number" min="0" step="1" required></label></div><button type="button" id="edit-breaks" class="text-button">编辑每周停产时段 <span aria-hidden="true">↗</span></button><p id="break-summary" class="small muted"></p></div><div id="model-error" class="notice error" role="alert" hidden></div><div class="editor-footer"><button id="apply-model" type="submit" class="button primary full">应用修改并预览 <span aria-hidden="true">→</span></button><div class="editor-file-actions"><button type="button" id="import-config" class="text-button">导入 JSON</button><span>·</span><button type="button" id="export-config" class="text-button">导出模型</button></div></div></form>
+      </div>
+    </aside>
+    <section class="simulation-column" aria-label="仿真展示和结果">
+      <section class="panel simulation-panel">
+        <div class="panel-title"><div><span class="section-number">02</span><h2>生产线运行</h2></div><span id="simulation-status" class="status-pill">等待运行</span></div>
+        <div class="simulation-toolbar"><div><span class="small muted">当前方案</span><strong id="active-label">案例一基准模型</strong></div><button id="run-preview" class="button primary" disabled><span aria-hidden="true">▶</span> 运行预览</button></div>
+        <div class="line-stage" id="line-stage"><div class="stage-overline"><span>串联加工线</span><span id="line-clock">第 1 天 · 00:00:00</span></div><div class="line-scroll"><svg id="production-line" viewBox="0 0 780 238" role="img" aria-label="生产线状态，尚未运行"></svg></div><div class="line-legend"><span><i class="dot processing"></i>加工</span><span><i class="dot waiting"></i>缺料 / 待机</span><span><i class="dot blocked"></i>堵塞</span><span><i class="dot failed"></i>故障</span><span><i class="dot offshift"></i>停产</span></div></div>
+        <div class="playback-controls"><button id="play-pause" class="play-button" disabled aria-label="播放仿真回放">▶</button><button id="restart-playback" class="icon-button" disabled title="从头回放" aria-label="从头回放">↺</button><input id="seek" type="range" min="0" max="1" value="0" step="1" aria-label="仿真回放进度" disabled><span id="replay-percent" class="mono">0%</span><label class="speed-label">速度<select id="playback-speed" aria-label="回放速度"><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option><option value="5">5×</option><option value="10">10×</option></select></label></div>
+        <p id="replay-note" class="replay-note">真实仿真状态的采样回放。修改参数后创建新版本，从初始状态重新运行。</p>
+        <div id="run-progress" class="run-progress" hidden><div><span id="run-progress-text">正在计算…</span><span id="run-progress-percent"></span></div><progress id="run-progress-bar" max="1"></progress></div>
+      </section>
+      <div class="metrics-heading"><h2>运行指标</h2><span id="metric-window" class="small muted">单次预览 · 预热后累计统计</span></div>
+      <div class="metrics-grid"><article class="metric-card"><div><span>产出率</span><span class="metric-icon">↗</span></div><strong id="metric-throughput">—</strong><span class="metric-unit">件 / 小时</span><canvas id="spark-throughput" aria-label="产出率变化曲线" role="img"></canvas></article><article class="metric-card"><div><span>平均在制品</span><span class="metric-icon">▦</span></div><strong id="metric-wip">—</strong><span class="metric-unit">件 · 时间加权</span><canvas id="spark-wip" aria-label="平均在制品变化曲线" role="img"></canvas></article><article class="metric-card"><div><span>单位产品能耗</span><span class="metric-icon">ϟ</span></div><strong id="metric-energy">—</strong><span class="metric-unit">kWh / 件</span><canvas id="spark-energy" aria-label="单位产品能耗变化曲线" role="img"></canvas></article></div>
+      <section class="panel history-panel"><div class="panel-title"><div><span class="section-number">03</span><h2>方案与评估</h2></div><button id="run-study" class="button" disabled>评估当前方案 <span aria-hidden="true">↗</span></button></div><p class="history-description">多次独立仿真，比较均值与置信区间。未评估的版本保留完整修改记录。</p><div id="study-summary" class="study-summary" hidden></div><div class="table-scroll"><table id="version-table"><thead><tr><th>方案 / 修改记录</th><th>产出率 <small>件/h</small></th><th>平均在制品 <small>件</small></th><th>单位能耗 <small>kWh/件</small></th><th><span class="sr-only">操作</span></th></tr></thead><tbody id="version-rows"></tbody></table></div><div class="model-footnote"><span aria-hidden="true">ⓘ</span><span>原料按需补给；在制品包含设备与中间缓冲区，不含原料和成品。<button id="show-assumptions" class="text-button">模型说明</button></span></div></section>
+    </section>
+    <aside class="panel assistant-panel" aria-label="AI 调整助手"><div class="panel-title"><div><span class="ai-mark" aria-hidden="true">✳</span><h2>调整助手</h2></div><span id="ai-status" class="ai-status">未连接</span></div><div class="ai-profile-bar"><div class="ai-profile-heading"><label for="ai-profile-select">当前 AI 模型</label><button id="manage-ai-profiles" type="button" class="text-button">管理接入 ↗</button></div><select id="ai-profile-select" aria-label="当前 AI 模型" disabled><option>正在载入模型配置…</option></select><p id="ai-profile-caption">可随时切换，下一条提示词使用所选模型。</p></div><div class="assistant-intro"><h3>用你的话，改进生产线。</h3><p>描述目标或具体参数，AI 将结合当前模型提出修改，并通过约束校验后创建新方案。</p></div><div id="messages" class="messages" aria-live="polite"><div class="assistant-empty"><div class="empty-orbit" aria-hidden="true"><span>✳</span></div><p>从一个优化目标开始</p><span>每次修改都会保留版本，<br>你可以随时回到之前的方案。</span></div></div><div id="adjust-progress" class="adjust-progress" hidden><span class="loading-dots">● ● ●</span> 正在分析模型并校验修改…</div><div class="assistant-bottom"><div class="prompt-suggestions"><button class="prompt-chip" data-prompt="不增加缓冲区容量，将第一台设备的可用率提高到 90%，观察产出率和能耗的变化。">提高首台设备可用率 <span>↗</span></button><button class="prompt-chip" data-prompt="保持缓冲区容量和加工时间不变，尝试降低平均在制品，并解释你选择调整的设备参数。">降低平均在制品 <span>↗</span></button></div><form id="prompt-form"><label for="prompt" class="sr-only">自然语言调整提示词</label><textarea id="prompt" placeholder="例如：保持缓冲容量不变，提高产出率…" rows="3" maxlength="4000"></textarea><div class="prompt-footer"><span>Ctrl + Enter 发送</span><button id="send-prompt" class="send-button" type="submit" aria-label="发送调整提示词" disabled>↑</button></div></form><p id="ai-hint" class="small muted">在“模型接入”中连接你的 AI 模型。</p></div></aside>
+  </main>
+  <footer class="app-footer"><span>SimLab Studio</span><span>离散事件仿真 · 可复现的制造实验</span><span id="save-status">模型与结果保存在本机</span></footer>
+  <input id="config-file" type="file" accept=".json,application/json" hidden>
+  <dialog id="settings-dialog" class="modal ai-settings-modal" aria-labelledby="ai-settings-title">
+    <form id="settings-form">
+      <div class="modal-heading"><div><p class="eyebrow">API &amp; AI MODELS</p><h2 id="ai-settings-title">模型接入</h2></div><button type="button" class="icon-button close-dialog" aria-label="关闭">×</button></div>
+      <p class="muted ai-settings-intro">为不同 API 服务和 AI 模型分别保存配置，随时切换。正在执行的调整仍使用发送时的模型。</p>
+      <section class="ai-profile-manager" aria-label="连接配置管理">
+        <label class="field">编辑连接配置<select id="ai-profile-edit-select" aria-label="编辑连接配置"></select></label>
+        <div class="ai-profile-tools"><button id="new-ai-profile" type="button" class="button">＋ 新建</button><button id="copy-ai-profile" type="button" class="button">复制配置</button><button id="delete-ai-profile" type="button" class="text-button danger-text">删除</button></div>
+        <div class="ai-edit-status-row"><span id="ai-edit-status" class="small muted"></span><button id="activate-ai-profile" type="button" class="text-button" hidden>启用已保存配置</button></div>
+      </section>
+      <div class="ai-settings-grid">
+        <label class="field">配置名称<input id="ai-profile-name" maxlength="60" placeholder="例如：日常优化 · DeepSeek" required autocomplete="off"></label>
+        <label class="field">快捷填写服务<select id="ai-service-preset"><option value="">选择服务模板（可选）</option value="openai">OpenAI · ChatGPT 系列模型</option><option value="deepseek">DeepSeek</option><option value="custom">自定义兼容服务</option></select></label>
+        <label class="field ai-wide-field">API Base URL<input id="ai-base-url" type="url" placeholder="留空使用 https://api.openai.com/v1" autocomplete="off"></label>
+        <label class="field">AI 模型名称<input id="ai-model" maxlength="160" placeholder="例如：gpt-4.1-mini / deepseek-chat" required autocomplete="off"></label>
+        <label class="field">接口协议<select id="ai-format"><option value="auto">自动选择</option><option value="responses">Responses</option><option value="chat_completions">Chat Completions</option></select></label>
+        <label class="field ai-wide-field">API Key<input id="ai-api-key" type="password" placeholder="输入该 API 服务的密钥" autocomplete="new-password"></label>
+      </div>
+      <div class="ai-key-row"><p id="ai-key-state" class="small muted"></p><label class="ai-clear-key"><input id="ai-clear-key" type="checkbox">移除此配置密钥</label></div>
+      <p class="small muted ai-settings-note">填写 API 地址和服务商提供的模型标识，不是聊天网页地址。支持上述两种兼容接口。配置会保存在本机；密钥仅保存在本次服务进程中，重启后需重新填写。提示词、当前模型与指标会发送至所选服务。</p>
+      <div id="settings-error" class="notice error" role="alert" hidden></div>
+      <div class="modal-actions"><button type="button" class="button close-dialog">关闭</button><button id="save-ai-settings" class="button primary" type="submit">保存并启用</button></div>
+    </form>
+  </dialog>
+  <dialog id="breaks-dialog" class="modal"><form id="breaks-form"><div class="modal-heading"><h2>每周停产时段</h2><button type="button" class="icon-button close-dialog" aria-label="关闭">×</button></div><p class="muted">每周一 00:00 为时间起点。结束时间须晚于开始时间；跨周时段请拆为两段。</p><div id="break-rows"></div><button id="add-break" type="button" class="text-button">＋ 添加停产时段</button><div id="breaks-error" class="notice error" role="alert" hidden></div><div class="modal-actions"><button type="button" class="button close-dialog">取消</button><button type="submit" class="button primary">保存时段</button></div></form></dialog>
+  <dialog id="info-dialog" class="modal wide-modal"><div class="modal-heading"><h2 id="info-title">模型说明</h2><button type="button" class="icon-button close-dialog" aria-label="关闭">×</button></div><div id="info-body"></div><div class="modal-actions"><button type="button" class="button primary close-dialog">知道了</button></div></dialog>
+  <div id="toast" class="toast" role="status" hidden></div>
+</body>
+</html>

@@ -1,0 +1,40 @@
+project_name: service-center-capacity-study
+
+simulation:
+  name: two-stage-service-center
+  until: 480
+  warmup: 60
+  first_arrival_at_zero: true
+  arrival_interarrival:
+    kind: exponential
+    mean: 5.0
+  stations:
+    - name: registration
+      capacity: 1
+      service_time:
+        kind: exponential
+        mean: 3.0
+    - name: specialist
+      capacity: 2
+      service_time:
+        kind: triangular
+        low: 4.0
+        mode: 8.0
+        high: 15.0
+  cycle_time_target: 30
+
+experiment:
+  replications: 20
+  base_seed: 20260825
+  common_random_numbers: true
+  confidence_level: 0.95
+  output_dir: outputs/service_center
+  parameter_grid:
+    stations.1.capacity: [2, 3, 4]
+
+openai:
+  model: gpt-5.6
+  max_output_tokens: 2500
+  timeout_seconds: 60
+  max_retries: 2
+  store: false
