@@ -1,24 +1,23 @@
-# 测试版源码包
+# 源码包与校验
 
-[下载完整源码 ZIP](SimPy-Lab-Studio-test-source.zip?raw=true) · [SHA-256 校验文件](SimPy-Lab-Studio-test-source.zip.sha256)
+## v1.2.0 正式版
 
-- 对应分支：`frontend/simulation-workspace`
-- 来源提交：[`545c996c2361`](https://github.com/Sylphiette666/SimPy-Lab-Studio/commit/545c996c2361323872e4dce37eb20843b36aef46)
-- 原始文件数：189；另附中文目录/运行/构建说明和逐文件来源清单。
-- 解压后先阅读 `SOURCE_GUIDE.zh-CN.md`，再阅读原项目 `README.md`。
-- 本包保留原始源码和目录结构，不包含运行数据、个人密钥、依赖缓存或成品软件。
-- ZIP 内的快照固定于来源提交；分支后续增加的打包文件不包含在自身源码包中。
+[完整源码 ZIP](SimPy-Lab-Studio-1.2.0-source.zip?raw=true) · [SHA-256](SimPy-Lab-Studio-1.2.0-source.zip.sha256)
 
-校验下载文件：
+来源提交：[`5502cc477ea0`](https://github.com/Sylphiette666/SimPy-Lab-Studio/commit/5502cc477ea05e443d3c675cb906fdfdb94a7069)，对应 `main`。包含 190 个 Git 原始源码/文档文件，另附中文说明和逐文件来源清单。解压后阅读 `SOURCE_GUIDE.zh-CN.md`。发行归档排除自身 `source-packages/`，不包含用户数据、密钥、依赖缓存或成品程序。
 
-```powershell
-Get-FileHash -Algorithm SHA256 ./SimPy-Lab-Studio-test-source.zip
-```
+SHA-256：`4aa55f42689e7feb89382c75d5734aa5db11d0f9c1151628e9fc0133e4db3fbb`。
 
-预期 SHA-256：`d71fb337f5e32285fd355a99c74ea322216b726a6a33a76ac59b457de810d986`。
+## 滚动测试版
 
-## 正式发布归档
+[测试版源码 ZIP](SimPy-Lab-Studio-test-source.zip?raw=true) · [SHA-256](SimPy-Lab-Studio-test-source.zip.sha256)
 
-[v1.1.0 正式版源码](SimPy-Lab-Studio-1.1.0-source.zip?raw=true) · [v1.1.0 校验文件](SimPy-Lab-Studio-1.1.0-source.zip.sha256)。
+对应 `frontend/simulation-workspace`，本次与 v1.2.0 同步。后续开发覆盖更新同名测试包，Git 历史保留每次修改。
 
-[v1.0.0 第一版源码](SimPy-Lab-Studio-v1.0.0-source.zip?raw=true) · [第一版校验文件](SimPy-Lab-Studio-v1.0.0-source.zip.sha256)。正式归档包保持原样，后续开发只替换上面的滚动测试版源码包。
+## 以往正式发布
+
+[v1.1.0 源码](SimPy-Lab-Studio-1.1.0-source.zip?raw=true) · [校验](SimPy-Lab-Studio-1.1.0-source.zip.sha256)
+
+[v1.0.0 第一版源码](SimPy-Lab-Studio-v1.0.0-source.zip?raw=true) · [校验](SimPy-Lab-Studio-v1.0.0-source.zip.sha256)
+
+以上历史归档保持原样。可用 `Get-FileHash -Algorithm SHA256 <下载的 ZIP 路径>` 核对外部校验值，包内 `SOURCE_MANIFEST.json` 可进一步核对原始文件来源。
