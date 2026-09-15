@@ -623,12 +623,6 @@ function renderVersions() {
     }
     actions.append(buttons); tr.append(actions); body.append(tr);
   }
-  const current = studyForVersion(state.session.active_version_id);
-  $("study-summary").hidden = !current;
-  if (current) {
-    const config = current.config || activeVersion().config;
-    text("study-summary", `当前方案已完成 ${config.replications} 次独立重复 · ${durationLabel(config.until_seconds)}（含 ${durationLabel(config.warmup_seconds)}预热）· ${format(config.confidence_level * 100, 0)}% 正态近似置信区间。比较不同版本时，请同时核对时长、预热和随机种子。`);
-  }
   window.StudioWorkspace?.renderResults();
   updateControls();
 }
@@ -636,6 +630,7 @@ function openInfo(title, contents) {
   text("info-title", title); $("info-body").replaceChildren(...contents); $("info-dialog").showModal();
 }
 function showVersion(version) {
+  if (window.StudioWorkspace?.openResults) { window.StudioWorkspace.openResults(version.id); return; }
   const intro = node("p", "", `${version.mode === "paper" ? "论文约束模式" : "自定义实验"} · ${new Date(version.created_at).toLocaleString("zh-CN")}`);
   const note = node("p", "", version.note || "模型参数与运行记录均保存在本机。");
   const list = node("ul");

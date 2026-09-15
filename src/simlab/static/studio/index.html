@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#153f39">
-  <title>SimPy Lab Studio · v1.1.0</title>
+  <title>SimPy Lab Studio · v1.1.0 测试版</title>
   <link rel="icon" href="/static/app.ico">
   <link rel="stylesheet" href="/static/style.css">
   <link rel="stylesheet" href="/static/workspace.css">
@@ -31,7 +31,7 @@
     <div class="nav-spacer"></div><span class="nav-version">STUDIO</span>
   </nav>
   <div class="workspace-heading">
-    <div class="workspace-title"><span class="workspace-breadcrumb">工作空间 <span aria-hidden="true">/</span></span><h1>仿真实验室</h1><span class="workspace-edition">v1.1.0</span></div>
+    <div class="workspace-title"><span class="workspace-breadcrumb">工作空间 <span aria-hidden="true">/</span></span><h1>仿真实验室</h1><span class="workspace-edition">v1.1.0 · 测试版</span></div>
     <div class="workspace-heading-right"><span id="version-badge" class="version-badge">初始化中</span><button id="new-session" type="button" class="button quiet">新建实验</button></div>
   </div>
   <div id="global-error" class="notice error global-notice" role="alert" hidden></div>
@@ -76,10 +76,13 @@
     </aside>
   </dialog>
   <dialog id="results-dialog" class="modal results-modal" aria-labelledby="results-title">
-    <div class="modal-heading"><div><p class="eyebrow">EXPERIMENT RESULTS</p><h2 id="results-title">运行结果与评估</h2></div><button id="close-results" type="button" class="icon-button" aria-label="关闭运行结果">×</button></div>
+    <div class="modal-heading"><div><p class="eyebrow">EXPERIMENT RESULTS</p><h2 id="results-title" tabindex="-1">运行结果与评估</h2></div><button id="close-results" type="button" class="icon-button" aria-label="关闭运行结果">×</button></div>
+    <div class="result-version-bar"><label for="result-version-select">查看方案<select id="result-version-select" aria-describedby="result-view-note"></select></label><button id="return-current-results" type="button" class="button" hidden>返回当前方案</button></div>
+    <p id="result-view-note" class="small muted"></p>
     <p id="result-status" class="result-status">运行预览后，查看当前方案的指标与完整评估。</p>
     <div id="result-cards" class="result-cards"></div>
     <section id="result-evaluation" class="result-evaluation" aria-label="方案分析"></section>
+    <section id="result-version-details" class="result-version-details" aria-label="版本信息与完整模型"></section>
       <section class="panel history-panel"><div class="panel-title"><div><span class="section-number">03</span><h2>方案版本与对比</h2></div><button id="run-study" class="button" disabled>评估当前方案 <span aria-hidden="true">↗</span></button></div><p class="history-description">多次独立仿真，比较均值与置信区间。未评估的版本保留完整修改记录。</p><div id="study-summary" class="study-summary" hidden></div><div class="table-scroll"><table id="version-table"><thead><tr><th>方案 / 修改记录</th><th>产出率 <small>件/h</small></th><th>平均在制品 <small>件</small></th><th>单位能耗 <small>kWh/件</small></th><th><span class="sr-only">操作</span></th></tr></thead><tbody id="version-rows"></tbody></table></div><div class="model-footnote"><span aria-hidden="true">ⓘ</span><span>原料按需补给；在制品包含设备与中间缓冲区，不含原料和成品。<button id="show-assumptions" class="text-button">模型说明</button></span></div></section>
     <div class="modal-actions"><button id="download-report" type="button" class="button primary">导出结果报告 <span aria-hidden="true">↗</span></button></div>
   </dialog>

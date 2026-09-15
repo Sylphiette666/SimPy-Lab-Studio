@@ -6,6 +6,7 @@
   let completedVersion = null;
   let wasFullscreen = false;
   let reportText = [];
+  let resultSelection = null;
   const metrics = [
     {key: "throughput_per_hour", label: "产出率", unit: "件 / 小时", direction: 1},
     {key: "avg_wip", label: "平均在制品", unit: "件 · 时间加权", direction: -1},
@@ -85,16 +86,28 @@
     const fields = ["until_seconds", "warmup_seconds", "replications", "base_seed", "confidence_level"];
     return fields.every((field) => current.config[field] === candidate.config[field]);
   }
-  function evaluation(study) {
-    const version = activeVersion();
+  function resultVersion() {
+    if (resultSelection && resultSelection.sessionId === state.session?.id) {
+      const selected = state.session.versions.find((version) => version.id === resultSelection.versionId);
+      if (selected) return selected;
+    }
+    resultSelection = null;
+    return activeVersion();
+  }
+  function studyPending(version) {
+    return state.startingRuns.has(`${state.session.id}/${version.id}/study`) || state.session.runs.some((run) =>
+      run.version_id === version.id && run.kind === "study" && ["queued", "running"].includes(run.status));
+  }
+  function evaluation(version, study) {
     const paragraphs = [
-      `当前方案：${versionName(version)}。${version.config.machines.length} 台串联设备、${version.config.buffers.length} 个中间缓冲区；${version.mode === "paper" ? "遵守论文案例一约束" : "使用自定义实验约束"}。`,
+      `查看方案：${versionName(version)}。${version.config.machines.length} 台串联设备、${version.config.buffers.length} 个中间缓冲区；${version.mode === "paper" ? "遵守论文案例一约束" : "使用自定义实验约束"}。`,
     ];
     if (version.note) paragraphs.push(`方案说明：${version.note}`);
     const changes = version.changes || [];
     paragraphs.push(changes.length ? `本次修改（${changes.length} 项）：${changes.map((change) => changeDescription(change, version.config)).join("；")}。` : "本方案为初始输入模型，尚无参数修改记录。");
     if (!study) {
-      paragraphs.push("完整评估尚未完成。右侧实时指标来自单次采样预览，不代表完整实验的最终结果。");
+      paragraphs.push("此版本尚无可读取的完整评估结果。单次采样预览指标不代表完整实验的最终结果。");
+      if (version.id !== state.session.active_version_id) paragraphs.push("如需评估此历史模型，可在下方版本表中将它恢复为新方案，再运行完整评估。原版本记录会保留。");
       return paragraphs;
     }
     paragraphs.push(`评估口径：${durationLabel(version.config.until_seconds)}（含 ${durationLabel(version.config.warmup_seconds)}预热），${version.config.replications} 次独立重复；下列比较来自完整评估均值。`);
@@ -120,13 +133,30 @@
     return paragraphs;
   }
   function renderResults() {
-    const version = activeVersion(); if (!version) return;
+    const version = resultVersion(); if (!version) return;
+    const historical = version.id !== state.session.active_version_id;
+    const selector = $("result-version-select");
+    const options = [...state.session.versions].reverse().map((item) => ({
+      id: item.id, label: `${versionName(item)}${item.id === state.session.active_version_id ? " · 当前方案" : ""}`,
+    }));
+    const revision = JSON.stringify(options);
+    if (selector.dataset.revision !== revision) {
+      selector.replaceChildren(...options.map((item) => {
+        const option = node("option", "", item.label); option.value = item.id; return option;
+      }));
+      selector.dataset.revision = revision;
+    }
+    selector.value = version.id;
+    $("results-dialog").dataset.versionId = version.id;
+    $("return-current-results").hidden = !historical;
+    $("run-study").hidden = historical;
+    text("result-view-note", historical ? "正在查看历史方案；当前模型与仿真回放保持不变。" : "正在查看当前方案的运行结果。可切换查看历史版本。");
     const study = studyForVersion(version.id);
-    const pending = hasPending("study");
+    const pending = studyPending(version);
     const latest = [...state.session.runs].reverse().find((run) => run.kind === "study" && run.version_id === version.id);
-    text("result-status", pending ? "正在计算完整评估 · 完成后自动更新"
-      : latest?.status === "failed" ? "最近评估失败 · 可点击评估当前方案重试"
-      : study ? "完整评估已完成" : "尚未完成完整评估");
+    text("result-status", pending ? `正在计算完整评估 · 完成后自动更新${study ? "；下方暂显示上一次成功结果" : ""}`
+      : latest?.status === "failed" ? `最近评估失败${study ? " · 下方保留上一次成功结果" : ""}${historical ? " · 可恢复为新方案后重试" : " · 可点击评估当前方案重试"}`
+      : study ? "完整评估已完成" : latest?.status === "succeeded" ? "此版本的评估结果暂时无法读取" : "此版本尚未完成完整评估");
     $("download-report").disabled = !study;
     $("result-cards").replaceChildren();
     for (const metric of metrics) {
@@ -139,12 +169,32 @@
         : "等待完整评估"));
       $("result-cards").append(card);
     }
-    reportText = evaluation(study);
+    reportText = evaluation(version, study);
     $("result-evaluation").replaceChildren(node("h3", "", "方案说明与结果解读"), ...reportText.map((paragraph) => node("p", "", paragraph)));
+    const metadata = $("result-version-details");
+    // Keep disclosure state and reading position when background jobs refresh.
+    const detailKey = `${state.session.id}/${version.id}`;
+    if (metadata.dataset.versionKey !== detailKey) {
+      const json = node("details");
+      json.append(node("summary", "text-button", "查看完整模型 JSON"), node("pre", "", JSON.stringify(version.config, null, 2)));
+      metadata.replaceChildren(node("p", "small muted", `版本创建时间：${new Date(version.created_at).toLocaleString("zh-CN")}`));
+      if (version.ai_config) {
+        const source = node("details");
+        source.append(node("summary", "text-button", `使用的 AI 模型：${aiSourceLabel(version.ai_config)}`), node("pre", "", JSON.stringify(version.ai_config, null, 2)));
+        metadata.append(source);
+      }
+      metadata.append(json); metadata.dataset.versionKey = detailKey;
+    }
+    $("study-summary").hidden = !study;
+    if (study) {
+      const config = study.config || version.config;
+      text("study-summary", `${versionName(version)} 已完成 ${config.replications} 次独立重复 · ${durationLabel(config.until_seconds)}（含 ${durationLabel(config.warmup_seconds)}预热）· ${format(config.confidence_level * 100, 0)}% 正态近似置信区间。比较不同版本时，请同时核对时长、预热和随机种子。`);
+    }
     if (completedVersion === key()) {
+      const activeStudy = studyForVersion(state.session.active_version_id);
       const banner = $("completion-banner"); banner.hidden = false;
       const status = banner.querySelector("[data-completion-status]");
-      if (status) status.textContent = pending ? "预览完成，正在生成完整方案评估…" : study ? "运行完成 · 最终指标与方案评估已就绪" : "预览完成 · 完整评估未完成，可在方案与评估中重试";
+      if (status) status.textContent = hasPending("study") ? "预览完成，正在生成完整方案评估…" : activeStudy ? "运行完成 · 最终指标与方案评估已就绪" : "预览完成 · 完整评估未完成，可在方案与评估中重试";
     }
   }
   async function complete() {
@@ -162,10 +212,17 @@
       if (requestKey === key()) { showError("global-error", error); renderResults(); }
     }
   }
-  function openResults() { renderResults(); if (!$("results-dialog").open) $("results-dialog").showModal(); }
+  function openResults(versionId = null) {
+    resultSelection = versionId ? {sessionId: state.session?.id, versionId} : null;
+    renderResults();
+    const dialog = $("results-dialog");
+    if (!dialog.open) dialog.showModal();
+    dialog.scrollTop = 0;
+    $("results-title").focus({preventScroll: true});
+  }
   const escapeHTML = (value) => String(value).replace(/[&<>"']/g, (character) => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"})[character]);
   function downloadReport() {
-    const version = activeVersion(); const study = studyForVersion(version?.id);
+    const version = resultVersion(); const study = studyForVersion(version?.id);
     if (!study) return;
     renderResults();
     const rows = metrics.map((metric) => {
@@ -176,7 +233,7 @@
     downloadBlob(new Blob([report], {type: "text/html;charset=utf-8"}), `SimPy-Lab-Studio-report-${version.id.slice(0, 8)}.html`);
   }
 
-  window.StudioWorkspace = {beginPreview, previewStarting, previewLoaded, openModel, frame, sync, renderResults, complete};
+  window.StudioWorkspace = {beginPreview, previewStarting, previewLoaded, openModel, openResults, frame, sync, renderResults, complete};
   const assistantPanel = document.querySelector(".assistant-panel");
   const assistantDialog = $("assistant-dialog");
   const assistantHome = document.createComment("running assistant dock position");
@@ -224,7 +281,11 @@
   });
   for (const id of ["edit-model", "nav-model"]) $(id).addEventListener("click", openModel);
   $("close-model").addEventListener("click", () => $("model-dialog").close());
-  for (const id of ["nav-results", "view-final-results"]) $(id).addEventListener("click", openResults);
+  for (const id of ["nav-results", "view-final-results", "return-current-results"]) $(id).addEventListener("click", () => openResults());
+  $("result-version-select").addEventListener("change", (event) => {
+    resultSelection = {sessionId: state.session.id, versionId: event.target.value};
+    renderResults();
+  });
   $("close-results").addEventListener("click", () => $("results-dialog").close());
   for (const id of ["model-dialog", "results-dialog", "assistant-dialog"]) {
     const dialog = $(id);
