@@ -1,6 +1,6 @@
 # Release workflow
 
-The user keeps the original first release and one rolling working edition. The user explicitly promoted the current tested application to `main` and requested a numbered public release, v1.1.0.
+The user keeps the original first release and one rolling working edition. The user explicitly promoted the current tested application to `main` and requested numbered public releases. The current stable release is v1.2.0.
 
 - `main` now contains the current stable release. Preserve the immutable `v1.0.0` tag/release and the first edition's executable and installer; do not keep `main` frozen at v1.0.0.
 - Continue development on `frontend/simulation-workspace`, which is now the rolling test branch. Do not create separate preview, equipment, or bug-fix editions.

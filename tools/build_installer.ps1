@@ -3,7 +3,7 @@ param(
     [string]$InnoCompiler,
     [string]$Python = 'python',
     [string]$OutputDirectory,
-    [string]$Version = '1.1.0'
+    [string]$Version = '1.2.0'
 )
 
 $ErrorActionPreference = 'Stop'

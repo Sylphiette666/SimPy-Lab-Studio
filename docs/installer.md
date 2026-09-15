@@ -1,6 +1,6 @@
 # 安装与分享说明
 
-把 **`SimPy-Lab-Studio-Setup-1.1.0.exe`** 发给对方即可，也可以分享 [GitHub 下载页](https://github.com/Sylphiette666/SimPy-Lab-Studio/releases/latest)。无需发送源代码、Python 环境、CMD 文件或自己的实验目录。
+把 **`SimPy-Lab-Studio-Setup-1.2.0.exe`** 发给对方即可，也可以分享 [GitHub 下载页](https://github.com/Sylphiette666/SimPy-Lab-Studio/releases/latest)。无需发送源代码、Python 环境、CMD 文件或自己的实验目录。
 
 ![中文安装向导](images/installer-welcome.png)
 
@@ -22,7 +22,7 @@
 
 在 Windows 设置的“应用 → 已安装的应用”中搜索 SimPy Lab Studio，选择卸载。卸载程序会移除软件文件和创建的快捷方式，保留 `%LOCALAPPDATA%\SimPy Lab Studio` 中的实验数据，不卸载其他软件也可能使用的共享 WebView2 Runtime。
 
-安装版和便携版使用同一 Windows 用户的数据目录。切换启动方式不会复制、重置实验或模型连接列表。已发布的 v1.1.0 安装包中 API Key 仅本次运行有效；后续测试版新增可选的 [本机加密保存](credential-storage.md)。该功能尚未另行发布正式安装包。
+安装版和便携版使用同一 Windows 用户的数据目录。切换启动方式不会复制、重置实验或模型连接列表。API Key 默认仅本次运行有效；v1.2.0 起可选 [本机加密保存](credential-storage.md)，由当前 Windows 用户加密保护。旧版升级会保留实验与连接列表，密钥保存仍由用户自行选择。
 
 ## 分享注意事项
 
@@ -55,7 +55,7 @@
 
 使用最终安装程序，实际验证全新安装、覆盖安装、桌面和开始菜单快捷方式、Windows 卸载登记、安装后 EXE 的真实短时仿真、卸载清理以及原有用户 JSON 数据保持不变。测试使用独立安装目录，结束后卸载测试副本。
 
-v1.1.0 还验证了先安装第一版 1.0.0、再使用 1.1.0 安装程序覆盖升级的流程，核对安装登记和 EXE 版本号一致。开发者可给 `tools/check_installer.ps1` 传入 `-BaselineInstallerPath` 指定旧版安装包。
+v1.2.0 还验证了先安装旧版 1.1.0、再使用 1.2.0 安装程序覆盖升级的流程，核对安装登记和 EXE 版本号一致。开发者可给 `tools/check_installer.ps1` 传入 `-BaselineInstallerPath` 指定旧版安装包。
 
 本机已有 WebView2，已验证自动检测并跳过安装组件。缺失时调用的微软引导程序已经验证签名，但未卸载本机共享组件来模拟缺失环境。
 
