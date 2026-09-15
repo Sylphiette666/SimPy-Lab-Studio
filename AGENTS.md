@@ -13,3 +13,5 @@ The user keeps the original first release and one rolling working edition. The u
 The simulation engine, metric calculations and physical model constraints remain outside a page-only change. AI adapter fixes already present in this branch must be retained.
 
 The user selects numbered improvement items one at a time. Implement only the item explicitly requested; do not automatically continue through the improvement list.
+
+The original numbered list and completed test-branch items are recorded in `docs/improvement-list.md`. Preserve its numbering when resolving follow-up requests.

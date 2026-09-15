@@ -141,6 +141,7 @@ function updateControls() {
   text("save-status", state.dirty ? "有未应用的模型修改" : "模型与结果保存在本机");
   window.StudioWorkspace?.sync();
   window.StudioTopology?.sync();
+  window.StudioVisualEditor?.sync();
 }
 function setDirty() { state.dirty = true; updateControls(); }
 function renderAI() {

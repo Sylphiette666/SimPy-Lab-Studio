@@ -10,6 +10,7 @@
   <link rel="stylesheet" href="/static/workspace.css">
   <link rel="stylesheet" href="/static/vendor/katex/dist/katex.min.css">
   <link rel="stylesheet" href="/static/conversation.css">
+  <link rel="stylesheet" href="/static/visual-editor.css">
   <script src="/static/vendor/marked/lib/marked.umd.js" defer></script>
   <script src="/static/vendor/dompurify/dist/purify.min.js" defer></script>
   <script src="/static/vendor/katex/dist/katex.min.js" defer></script>
@@ -17,6 +18,8 @@
   <script src="/static/app.js" defer></script>
   <script src="/static/workspace.js" defer></script>
   <script src="/static/topology.js" defer></script>
+  <script src="/static/model-graph.js" defer></script>
+  <script src="/static/visual-editor.js" defer></script>
 </head>
 <body class="studio-workspace">
   <header class="app-header">
@@ -72,6 +75,24 @@
   </main>
   <footer class="app-footer"><span><i aria-hidden="true"></i> SimPy Lab Studio</span><span>离散事件仿真 · 可复现实验</span><span id="save-status">模型与结果保存在本机</span></footer>
   <dialog id="assistant-dialog" class="modal assistant-modal" aria-labelledby="assistant-title"></dialog>
+  <dialog id="visual-model-dialog" class="modal visual-model-modal" aria-labelledby="visual-model-title">
+    <header class="visual-model-heading"><div><p class="eyebrow">MODEL BUILDER</p><h2 id="visual-model-title">可视化建模</h2></div><button id="close-visual-model" class="button quiet" type="button" title="关闭窗口，保留本次图形草稿">关闭</button></header>
+    <div class="visual-model-tools"><span id="graph-summary"></span><button id="graph-undo" type="button" class="button quiet" disabled>撤销</button><button id="graph-redo" type="button" class="button quiet" disabled>重做</button><button id="graph-arrange" type="button" class="button quiet">自动排列</button><button id="graph-reset" type="button" class="button quiet">重新载入输入模型</button></div>
+    <p id="graph-hint" class="graph-hint" role="status">拖入设备与容器，再从输出端拖向输入端建立连接。</p>
+    <div class="visual-model-body">
+      <aside class="graph-palette" aria-label="建模组件"><h3>添加组件</h3>
+        <button id="graph-add-machine" type="button" class="graph-palette-item" draggable="true" data-graph-type="machine"><span class="graph-symbol" aria-hidden="true">▣</span><strong>加工设备</strong><small>拖入画布 / 点击添加</small></button>
+        <button id="graph-add-buffer" type="button" class="graph-palette-item" draggable="true" data-graph-type="buffer"><span class="graph-symbol" aria-hidden="true">▤</span><strong>缓冲容器</strong><small>拖入画布 / 点击添加</small></button>
+        <div class="graph-connection-guide"><strong>连接线</strong><span aria-hidden="true">○ ───→ ○</span><p>从节点右侧输出端拖到左侧输入端，也可依次点击两端。</p></div>
+        <p class="graph-rules">从原料连到成品；相邻设备之间需有一个容器。最多 12 台设备。</p>
+      </aside>
+      <div id="graph-viewport" class="graph-viewport" tabindex="0" aria-label="模型编辑画布，可滚动；选择节点后可用方向键移动">
+        <div id="graph-canvas" class="graph-canvas"><svg id="graph-edges" aria-label="模型连接线"></svg><div id="graph-nodes"></div></div>
+      </div>
+      <aside class="graph-inspector" aria-label="选中对象的参数"><h3 id="graph-selection-title">选择节点或连接线</h3><p id="graph-selection-note" class="small muted">点击设备或容器编辑参数，拖动卡片调整位置。</p><form id="graph-properties" class="graph-properties" novalidate></form><button id="graph-delete" type="button" class="button graph-delete" disabled>删除选中对象</button><div class="graph-validation"><h3>连接检查</h3><p id="graph-validation-status" role="status"></p><ul id="graph-issues"></ul></div></aside>
+    </div>
+    <footer class="visual-model-footer"><span id="graph-save-status">图形位置可自由调整，实际加工顺序由连接线决定。</span><div><button id="graph-apply" type="button" class="button">应用到输入模型</button><button id="graph-run" type="button" class="button primary">应用并运行预览</button></div></footer>
+  </dialog>
   <dialog id="model-dialog" class="modal model-modal" aria-labelledby="model-dialog-title">
     <aside class="panel model-panel" aria-label="初始模型编辑">
       <div class="panel-title"><div><span class="section-number">01</span><h2 id="model-dialog-title">输入模型</h2></div><div class="model-heading-actions"><button id="toggle-model" class="icon-button" aria-expanded="true" aria-controls="model-body" title="收起模型面板">−</button><button id="close-model" type="button" class="icon-button" aria-label="关闭输入模型">×</button></div></div>

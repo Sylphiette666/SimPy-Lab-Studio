@@ -287,7 +287,7 @@
     renderResults();
   });
   $("close-results").addEventListener("click", () => $("results-dialog").close());
-  for (const id of ["model-dialog", "results-dialog", "assistant-dialog"]) {
+  for (const id of ["model-dialog", "results-dialog", "assistant-dialog", "visual-model-dialog"]) {
     const dialog = $(id);
     let pressedOutside = false;
     const isOutside = (event) => {
