@@ -15,6 +15,15 @@ ASSETS = ROOT / "src" / "simlab" / "static" / "studio"
 
 def licenses():
     sections = []
+    vendor_manifest = ASSETS / "vendor" / "manifest.json"
+    if vendor_manifest.is_file():
+        for name, package in json.loads(vendor_manifest.read_text(encoding="utf-8")).items():
+            notice = (ASSETS / "vendor" / name / "LICENSE").read_text(encoding="utf-8")
+            sections.append(
+                f"<details><summary>{html.escape(name)} {html.escape(package['version'])}"
+                f" (offline conversation renderer)</summary><pre>{html.escape(notice)}"
+                "</pre></details>"
+            )
     # Include notices from all distributions in the build environment, including
     # transitive native components' package license files.
     for distribution in sorted(

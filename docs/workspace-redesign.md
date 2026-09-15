@@ -163,12 +163,12 @@ node tools/check_workspace_browser.cjs
 .venv\Scripts\python.exe -m pytest
 ```
 
-本分支没有修改打包脚本或第一版发行文件。构建测试版先输出到固定暂存目录 `dist/test-edition`，验证成功后覆盖交付目录 `SimPy Lab Studio 测试版/SimPy Lab Studio.exe`，不另建以功能命名的版本目录：
+第一版发行文件保持不变。打包脚本会收录新增的离线对话组件与许可。构建测试版先输出到固定暂存目录 `dist/test-edition`，验证成功后覆盖交付目录 `SimPy Lab Studio 测试版/SimPy Lab Studio.exe`，不另建以功能命名的版本目录：
 
 ```powershell
 .venv\Scripts\python.exe -m pip install -e ".[desktop,desktop-build,dev]"
 .venv\Scripts\python.exe -c "from tools.build_desktop import licenses; licenses()"
-.venv\Scripts\python.exe -m PyInstaller --noconfirm --distpath dist/test-edition --workpath build/test-edition desktop.spec
+.venv\Scripts\python.exe -m PyInstaller --clean --noconfirm --distpath dist/test-edition --workpath build/test-edition desktop.spec
 ```
 
 测试版 EXE 沿用原有桌面宿主、图标和自动服务生命周期。原宿主采用单实例机制，因此打开另一版前需先关闭正在运行的版本；实验数据格式仍然兼容。v1.1.0 发布时统一更新了界面、桌面版本常量、EXE 资源和安装程序的版本号，单实例逻辑保持不变。

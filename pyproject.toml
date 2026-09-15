@@ -64,7 +64,7 @@ simlab-mcp = "simlab.mcp_server:main"
 where = ["src"]
 
 [tool.setuptools.package-data]
-simlab = ["static/studio/*"]
+simlab = ["static/studio/*", "static/studio/vendor/**/*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

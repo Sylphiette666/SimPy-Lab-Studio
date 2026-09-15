@@ -653,25 +653,9 @@ async function restoreVersion(version) {
   } finally { state.busy = false; updateControls(); }
 }
 
-const emptyMessages = $("messages").cloneNode(true);
 function renderMessages() {
   const messages = [...(state.session?.messages || []), ...state.pendingMessages];
-  const container = $("messages"); container.replaceChildren();
-  if (!messages.length) { container.append(...[...emptyMessages.childNodes].map((child) => child.cloneNode(true))); return; }
-  for (const message of messages) {
-    const article = node("article", `message ${message.role === "user" ? "user" : message.role === "error" ? "error" : "assistant"}${message.pending ? " pending" : ""}`);
-    const meta = node("div", "message-meta", message.role === "user" ? "你" : message.role === "error" ? "调整未应用" : "✳ 调整助手");
-    if (message.applied === true) meta.append(node("span", "tiny-badge", "已应用"));
-    if (message.applied === false) meta.append(node("span", "tiny-badge", "未修改模型"));
-    article.append(meta);
-    if (message.ai_config && message.role !== "user") {
-      const source = node("div", "message-model", aiSourceLabel(message.ai_config));
-      source.title = [message.ai_config.base_url, message.ai_config.api_format].filter(Boolean).join(" · ");
-      article.append(source);
-    }
-    article.append(node("div", "message-content", message.content)); container.append(article);
-  }
-  container.scrollTop = container.scrollHeight;
+  window.StudioConversation.render(messages, state.session);
 }
 async function adjustModel() {
   const prompt = $("prompt").value.trim(); if (!prompt) return;

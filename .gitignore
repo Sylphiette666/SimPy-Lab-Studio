@@ -12,6 +12,8 @@ build/
 dist/
 src/simlab/static/studio/licenses.html
 node_modules/
+# Offline UI distributions are source assets, not generated application builds.
+!src/simlab/static/studio/vendor/**
 .env
 .env.local
 ~$*.docx
