@@ -11,3 +11,5 @@ The user keeps the original first release and one rolling working edition. The u
 - For explicitly requested stable releases, merge tested changes into `main`, synchronize the desktop/UI/EXE/installer version, verify installation and uninstall behavior, and publish a numbered GitHub Release. Keep prior release assets unchanged. Stable source archives use versioned filenames under `source-packages/`.
 
 The simulation engine, metric calculations and physical model constraints remain outside a page-only change. AI adapter fixes already present in this branch must be retained.
+
+The user selects numbered improvement items one at a time. Implement only the item explicitly requested; do not automatically continue through the improvement list.

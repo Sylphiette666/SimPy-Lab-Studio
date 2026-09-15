@@ -216,10 +216,11 @@ def _self_test(folder: Path, report: Path) -> int:
     try:
         url = server.start()
 
-        def request(route, body=None):
+        def request(route, body=None, *, method=None):
             payload = None if body is None else json.dumps(body).encode()
             req = urllib.request.Request(
-                url + route, data=payload, headers={"Content-Type": "application/json"}
+                url + route, data=payload, headers={"Content-Type": "application/json"},
+                method=method,
             )
             with urllib.request.urlopen(req, timeout=30) as response:
                 return json.load(response)
@@ -241,7 +242,35 @@ def _self_test(folder: Path, report: Path) -> int:
             run = request(root + "/runs/" + run["id"])
         assert run["status"] == "succeeded", run.get("error")
         assert run["result"]["frames"]
-        result.update(ok=True, checks=["embedded assets", "server startup", "real SimPy preview"])
+        checks = ["embedded assets", "server startup", "real SimPy preview"]
+        if sys.platform == "win32":
+            import secrets
+
+            secret = "selftest-" + secrets.token_urlsafe(24)
+            profiles_route = "/api/studio/ai/profiles"
+            before = {item["id"] for item in request(profiles_route)["profiles"]}
+            saved = request(profiles_route, {
+                "name": "Self-test credential", "model": "fixture-only",
+                "base_url": "https://fixture.invalid/v1", "api_key": secret,
+                "remember_key": True,
+            })
+            profile_id = next(item["id"] for item in saved["profiles"] if item["id"] not in before)
+            assert secret not in json.dumps(saved)
+            assert secret not in (folder / "experiments/ai_profiles.json").read_text("utf-8")
+            server.close()
+            server = DesktopServer(folder)
+            url = server.start()
+            loaded = next(item for item in request(profiles_route)["profiles"]
+                          if item["id"] == profile_id)
+            assert loaded["has_key"] and loaded["remember_key"] and not loaded["key_storage_error"]
+            request(profiles_route + "/" + profile_id, method="DELETE")
+            assert profile_id not in json.loads(
+                (folder / "experiments/ai_profiles.json").read_text("utf-8")
+            ).get("protected_keys", {})
+            checks.extend([
+                "encrypted credential survives server restart", "saved credential removal",
+            ])
+        result.update(ok=True, checks=checks)
     except Exception as exc:
         result["error"] = str(exc)
     finally:
@@ -321,7 +350,7 @@ def main(argv: list[str] | None = None) -> int:
             "3. 在“模型接入”保存 API 地址、模型和密钥，右侧随时切换。\n"
             "4. 输入自然语言目标，校验通过后生成新版本并重新仿真。\n"
             "5. 执行统计评估比较方案，再导出实验包。\n\n"
-            "API 密钥仅在内存中保存，退出软件后须重新填写。\n"
+            "API 密钥默认仅本次运行有效；可在模型接入中选择本机加密保存。\n"
             "关闭窗口会停止后台服务，未完成的任务下次需重新运行。\n"
             "这是离散事件仿真与二维状态回放，工程使用需用实际数据校准。"
         )

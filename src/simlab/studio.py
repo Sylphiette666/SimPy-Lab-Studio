@@ -380,7 +380,7 @@ def create_studio_app(
     output_root: str | Path = "outputs/studio",
     agent_factory: Callable[[AISettings], Any] | None = None,
 ) -> FastAPI:
-    """Create an independent local-only application; secrets live only in process memory."""
+    """Create a local application with optional Windows-encrypted credential storage."""
     store = _SessionStore(Path(output_root))
     profiles = AIProfileStore(
         store.root / "ai_profiles.json", AISettings.from_environment(), store.lock

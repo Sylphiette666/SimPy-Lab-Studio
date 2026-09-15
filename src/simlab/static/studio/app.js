@@ -697,7 +697,8 @@ async function adjustModel() {
 function readAIEditor() {
   return {name: $("ai-profile-name").value.trim(), model: $("ai-model").value.trim(),
     base_url: $("ai-base-url").value.trim(), api_format: $("ai-format").value,
-    api_key: $("ai-api-key").value.trim(), clear_key: $("ai-clear-key").checked};
+    api_key: $("ai-api-key").value.trim(), clear_key: $("ai-clear-key").checked,
+    remember_key: $("ai-remember-key").checked};
 }
 function retainAIDraft() {
   if (state.aiEditorId) state.aiDrafts.set(state.aiEditorId, readAIEditor());
@@ -711,12 +712,21 @@ function updateAIEditorControls() {
   $("activate-ai-profile").disabled = state.aiSaving || !profile || active;
   $("activate-ai-profile").hidden = !profile || active;
   $("ai-api-key").disabled = state.aiSaving || $("ai-clear-key").checked;
+  $("ai-remember-key").disabled = state.aiSaving || $("ai-clear-key").checked ||
+    (!state.aiProfiles?.key_storage_available && !profile?.remember_key);
   const endpoint = (url) => url.trim().replace(/\/+$/, "");
   const newEndpoint = profile && endpoint($("ai-base-url").value) !== endpoint(profile.base_url || "");
-  text("ai-key-state", $("ai-clear-key").checked ? "保存后将移除这份配置的密钥。"
-    : $("ai-api-key").value.trim() ? "新密钥将在保存后用于这份配置。"
+  const remember = $("ai-remember-key").checked;
+  text("ai-key-state", $("ai-clear-key").checked ? "保存后将移除此配置在本次运行中和本机保存的密钥。"
+    : $("ai-api-key").value.trim() ? (remember ? "保存后将使用新密钥，并在本机加密保存。" : "新密钥仅在本次运行中使用。")
     : newEndpoint ? "服务地址已更改，请填写新服务的密钥。"
-    : profile?.available ? "此配置已有密钥；留空保留。" : "此配置尚未提供密钥，可以先保存配置。");
+    : profile?.key_storage_error ? "已保存的密钥无法读取，请重新填写或移除。"
+    : profile?.remember_key ? (remember ? "密钥已在本机加密保存；留空保留。" : "保存后移除本机密钥副本，仅保留到本次软件退出。")
+    : profile?.has_key ? (remember ? "保存后将加密保存此配置正在使用的密钥。" : "此配置密钥仅本次运行有效；留空保留。")
+    : "此配置尚未提供密钥，可以先保存配置。");
+  text("ai-key-storage-note", !state.aiProfiles?.key_storage_available
+    ? "当前系统不支持本机加密保存。仍可仅本次运行使用，或移除已有密钥。"
+    : "默认仅本次运行使用。勾选后由当前 Windows 账户保护，重启软件可继续使用；换电脑或账户通常需重新输入。");
 }
 function renderAIEditor(id) {
   state.aiEditorId = id;
@@ -735,6 +745,7 @@ function renderAIEditor(id) {
   $("ai-base-url").value = profile.base_url || "";
   $("ai-format").value = profile.api_format || "auto";
   $("ai-api-key").value = profile.api_key || "";
+  $("ai-remember-key").checked = Boolean(profile.remember_key);
   $("ai-clear-key").checked = Boolean(profile.clear_key);
   $("ai-api-key").placeholder = profile.available ? "留空保留同一服务的现有密钥" : "输入该 API 服务的密钥";
   $("ai-service-preset").value = "";
@@ -766,8 +777,8 @@ async function switchAIProfile(id) {
 }
 function newAIProfile(copy = false) {
   retainAIDraft();
-  const draft = copy ? {...readAIEditor(), name: `${$("ai-profile-name").value.trim()} 副本`.slice(0, 60), api_key: "", clear_key: false}
-    : {name: "新的模型连接", model: "", base_url: "", api_format: "auto", api_key: "", clear_key: false};
+  const draft = copy ? {...readAIEditor(), name: `${$("ai-profile-name").value.trim()} 副本`.slice(0, 60), api_key: "", clear_key: false, remember_key: false}
+    : {name: "新的模型连接", model: "", base_url: "", api_format: "auto", api_key: "", clear_key: false, remember_key: false};
   state.aiDrafts.set("new", draft); renderAIEditor("new"); $("ai-profile-name").focus();
 }
 function fillAIService() {
@@ -785,7 +796,8 @@ function fillAIService() {
 }
 async function saveSettings() {
   const draft = readAIEditor();
-  const body = {name: draft.name, model: draft.model, base_url: draft.base_url, api_format: draft.api_format};
+  const body = {name: draft.name, model: draft.model, base_url: draft.base_url, api_format: draft.api_format,
+    remember_key: draft.remember_key && !draft.clear_key};
   if (draft.clear_key || draft.api_key) body.api_key = draft.clear_key ? "" : draft.api_key;
   const creating = state.aiEditorId === "new";
   const oldIds = new Set(state.aiProfiles.profiles.map((profile) => profile.id));
@@ -927,6 +939,7 @@ bind("activate-ai-profile", "click", async () => {
 $("ai-service-preset").addEventListener("change", fillAIService);
 $("ai-base-url").addEventListener("input", updateAIEditorControls);
 $("ai-api-key").addEventListener("input", updateAIEditorControls);
+$("ai-remember-key").addEventListener("change", updateAIEditorControls);
 $("ai-clear-key").addEventListener("change", () => { if ($("ai-clear-key").checked) $("ai-api-key").value = ""; updateAIEditorControls(); });
 bind("edit-breaks", "click", editBreaks);
 bind("breaks-form", "submit", saveBreaks, "breaks-error");
