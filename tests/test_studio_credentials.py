@@ -71,7 +71,7 @@ def test_invalid_stored_values_never_become_credentials(value):
 
 
 @WINDOWS
-def test_saved_keys_restore_and_never_appear_in_api_or_experiment_exports(tmp_path):
+def test_saved_keys_restore_and_stay_out_of_catalogs_and_experiment_exports(tmp_path):
     secret = "fixture-private-stored-key-123456789"
     with TestClient(create_studio_app(output_root=tmp_path)) as client:
         response = client.post(PROFILES, json=fields(api_key=secret, remember_key=True))
@@ -93,6 +93,11 @@ def test_saved_keys_restore_and_never_appear_in_api_or_experiment_exports(tmp_pa
     with TestClient(create_studio_app(output_root=tmp_path, agent_factory=agent)) as client:
         catalog = client.get(PROFILES).json()
         assert next(p for p in catalog["profiles"] if p["id"] == saved["id"])["has_key"]
+        restored = client.post(f"{PROFILES}/{saved['id']}/key",
+                               headers={"X-Simlab-Key-Access": "settings"},
+                               json={"base_url": saved["base_url"]})
+        assert restored.status_code == 200 and restored.json() == {"api_key": secret}
+        assert restored.headers["cache-control"] == "no-store"
         config = client.get("/api/studio/bootstrap").json()["template"]
         session = client.post("/api/studio/sessions", json={"config": config}).json()
         endpoint = f"/api/studio/sessions/{session['id']}"
@@ -217,3 +222,29 @@ def test_opt_in_without_a_key_requires_input(tmp_path):
     with pytest.raises(HTTPException) as error:
         profiles.create(ProfileInput(**fields(remember_key=True)))
     assert error.value.status_code == 422 and not profiles.path.exists()
+
+
+def test_settings_key_access_requires_header_same_origin_and_matching_endpoint(tmp_path):
+    secret = "fixture-settings-only-secret"
+    with TestClient(create_studio_app(output_root=tmp_path)) as client:
+        catalog = client.post(PROFILES, json=fields(api_key=secret)).json()
+        saved = next(p for p in catalog["profiles"] if p["id"] != "default")
+        endpoint = f"{PROFILES}/{saved['id']}/key"
+        body = {"base_url": saved["base_url"] + "/"}
+        headers = {"X-Simlab-Key-Access": "settings"}
+        assert client.get(endpoint).status_code == 405
+        assert client.post(endpoint, json=body).status_code == 403
+        for extra in [{"Origin": "https://other.invalid"}, {"Sec-Fetch-Site": "cross-site"}]:
+            response = client.post(endpoint, headers=headers | extra, json=body)
+            assert response.status_code == 403 and secret not in response.text
+        response = client.post(endpoint, headers=headers,
+                               json={"base_url": "https://other.invalid/v1"})
+        assert response.status_code == 409 and secret not in response.text
+        response = client.post(endpoint, headers=headers | {"Origin": "http://testserver"},
+                               json=body)
+        assert response.status_code == 200 and response.json() == {"api_key": secret}
+        assert response.headers["cache-control"] == "no-store"
+        assert secret not in client.get(PROFILES).text
+        assert client.post(PROFILES + "/missing/key", headers=headers, json=body).status_code == 404
+        client.put(f"{PROFILES}/{saved['id']}", json=fields(api_key=""))
+        assert client.post(endpoint, headers=headers, json=body).json() == {"api_key": ""}

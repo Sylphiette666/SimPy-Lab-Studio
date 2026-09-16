@@ -253,14 +253,14 @@ const path = require('node:path');
     const adjustmentGate = new Promise(resolve => { releaseAdjustment = resolve; });
     let notifyIntercept;
     const intercepted = new Promise(resolve => { notifyIntercept = resolve; });
-    const adjustmentPattern = '**/api/studio/sessions/*/adjust';
+    const adjustmentPattern = '**/api/studio/sessions/*/adjustments';
     const holdAdjustment = async route => {
       notifyIntercept(route.request().postDataJSON());
       await adjustmentGate;
       await route.continue();
     };
     await page.route(adjustmentPattern, holdAdjustment);
-    const adjustmentReady = page.waitForResponse(response => response.url().endsWith('/adjust') &&
+    const adjustmentReady = page.waitForResponse(response => response.url().endsWith('/adjustments') &&
       response.request().method() === 'POST');
     await page.locator('#prompt').fill('将第一台设备可用率提高到90%，保留其余参数');
     await page.locator('#send-prompt').click();
@@ -278,15 +278,19 @@ const path = require('node:path');
     releaseAdjustment();
     const adjustmentResponse = await adjustmentReady;
     assert.equal(adjustmentResponse.ok(), true, await adjustmentResponse.text());
-    const adjustedSession = await adjustmentResponse.json();
     await page.unroute(adjustmentPattern, holdAdjustment);
+    await page.locator('#apply-adjustment').waitFor({state:'visible'});
+    assert.equal(await page.evaluate(()=>state.session.active_version_id),editedSession.active_version_id);
+    const application = page.waitForResponse(response=>response.url().endsWith('/apply') && response.request().method()==='POST');
+    await page.locator('#apply-adjustment').click();
+    const adjustedSession = await (await application).json();
     assert.notEqual(adjustedSession.active_version_id, editedSession.active_version_id);
     assert.equal(adjustedSession.versions.at(-1).ai_config.model, 'fixture-workspace-0');
     assert.equal(adjustedSession.versions.at(-1).config.machines[0].availability, .9);
     await waitReady();
     await waitPlaying();
     assert.match(await page.locator('#messages').textContent(), /fixture-workspace-0/);
-    checks.push('sending pauses immediately; selected model is snapshotted; adjusted version autoplays');
+    checks.push('sending pauses immediately; model is snapshotted; explicit confirmation applies and autoplays');
 
     // An unavailable provider cannot erase the existing preview or silently change the model.
     await page.route(adjustmentPattern, route => route.fulfill({
@@ -296,7 +300,7 @@ const path = require('node:path');
     await page.locator('#play-pause').click();
     await page.locator('#prompt').fill('将第一台设备可用率提高到90%');
     await page.locator('#send-prompt').click();
-    await page.waitForFunction(() => document.querySelector('#messages').textContent.includes('模型服务暂时不可用'));
+    await page.waitForFunction(() => document.querySelector('#adjustment-status').textContent.includes('模型服务暂时不可用'));
     assert.equal(await paused(), '播放仿真回放');
     assert.equal(await page.locator('#play-pause').isDisabled(), false);
     const persisted = await (await page.request.get(`${url}/api/studio/sessions/${sessionId}`)).json();
@@ -380,7 +384,8 @@ const path = require('node:path');
     assert.equal(await page.locator('#until-days').inputValue(), '0.05');
     await page.locator('#ai-settings').click();
     await page.waitForFunction(() => document.querySelector('#ai-model').value === 'fixture-workspace-1');
-    assert.equal(await page.locator('#ai-api-key').inputValue(), '');
+    await page.waitForFunction(() => document.querySelector('#ai-api-key').value === 'fixture-workspace-key-1');
+    assert.equal(await page.locator('#ai-api-key').getAttribute('type'), 'password');
     await closeDialog('settings-dialog');
     const catalogText = await (await page.request.get(`${url}/api/studio/ai/profiles`)).text();
     assert.equal(catalogText.includes('fixture-workspace-key-'), false);

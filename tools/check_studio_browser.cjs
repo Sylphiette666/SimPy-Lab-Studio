@@ -60,7 +60,8 @@ const path = require('node:path');
     await page.waitForFunction(() => document.querySelector('#model-name')?.value);
     assert.equal(await page.locator('#until-days').inputValue(), '0.05');
     await page.locator('#ai-settings').click();
-    assert.equal(await page.locator('#ai-api-key').inputValue(), '');
+    await page.waitForFunction(() => !document.querySelector('#save-ai-settings').disabled);
+    assert.equal(await page.locator('#ai-api-key').getAttribute('type'), 'password');
     await page.keyboard.press('Escape');
 
     if (await page.locator('#nav-results').count()) await page.locator('#nav-results').click();

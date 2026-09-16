@@ -141,6 +141,9 @@ body.studio-workspace { display:grid; grid-template-columns:64px minmax(0,1fr); 
 .studio-workspace .editor-footer { padding:16px 18px; background:#fff; border-top:1px solid #dce5d9; }
 .studio-workspace .results-modal { width:1060px; max-width:calc(100vw - 48px); }
 .studio-workspace .ai-key-storage { margin:12px 0; padding:12px; background:#f3f7f2; border:1px solid var(--border); border-radius:8px; }
+.studio-workspace .ai-key-input { display:flex; gap:8px; align-items:stretch; }
+.studio-workspace .ai-key-input input { flex:1; min-width:0; width:0; }
+.studio-workspace .ai-key-input button { flex:none; min-width:60px; }
 .studio-workspace .ai-key-storage label { display:flex; align-items:center; gap:8px; font-size:12px; cursor:pointer; }
 .studio-workspace .ai-key-storage input { flex:none; accent-color:var(--teal); }
 .studio-workspace .ai-key-storage p { margin-top:6px; }
@@ -277,3 +280,12 @@ body.studio-workspace.immersive { grid-template-rows:46px 0 auto minmax(0,1fr) 2
 .studio-workspace .topology-section-title { padding:16px 0 10px; color:#345e40; }
 .studio-workspace .topology-defaults { margin-top:8px; font-size:10px; }
 .studio-workspace .topology-link-preview { font-size:11px; line-height:1.8; padding:10px; margin-top:14px; border-radius:7px; background:#edf4e8; overflow-wrap:anywhere; }
+/* Request review and recovery controls stay usable in the narrow assistant. */
+.adjustment-controls { padding: 8px 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.adjustment-controls[hidden] { display: none; }
+.adjustment-controls p { flex-basis: 100%; margin: 0; overflow-wrap: anywhere; }
+#adjustment-dialog { max-height: 90vh; overflow: auto; }
+#adjustment-changes { padding-left: 22px; overflow-wrap: anywhere; }
+#adjustment-changes li { margin: 10px 0; }
+#draft-recovery { margin: 10px 0; }
+#draft-recovery button { margin: 4px; }

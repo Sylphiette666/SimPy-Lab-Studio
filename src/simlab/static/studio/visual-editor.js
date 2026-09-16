@@ -16,6 +16,38 @@
   const editable = () => !unavailable() && !stale();
   const fingerprint = config => JSON.stringify([config, $("model-mode").value]);
   const graphChanged = () => graph && JSON.stringify(graph) !== savedGraph;
+  const draftKey = id => "simlab.studio.graph-draft." + id;
+  function saveDraft() {
+    if (!graph || !contextKey) return;
+    try {
+      const key = draftKey(contextKey.split("/")[0]);
+      if (graphChanged()) localStorage.setItem(key, JSON.stringify({graph, base, mode, contextKey, sourceStamp, savedGraph, undo, redo}));
+      else localStorage.removeItem(key);
+    } catch { hint("图形草稿暂不能保存到本机，请及时应用或导出模型。", true); }
+  }
+  function recoverDraft() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(draftKey(state.session.id)) || "null");
+      if (!saved || !Array.isArray(saved.graph?.nodes) || !Array.isArray(saved.graph?.edges) || !saved.base?.machines) return false;
+      ({graph, base, mode, contextKey, sourceStamp, savedGraph} = saved);
+      undo = Array.isArray(saved.undo) ? saved.undo.slice(-80) : []; redo = Array.isArray(saved.redo) ? saved.redo.slice(-80) : [];
+      selectedNode = selectedEdge = connectionFrom = gesture = null; return true;
+    } catch { return false; }
+  }
+  function conflict() {
+    if (!graph) return false;
+    try { return stale() || sourceStamp !== fingerprint(readDraft()); } catch { return true; }
+  }
+  const useDraft = node("button", "button", "保留图形并合并当前实验设置"); useDraft.id = "graph-keep-draft"; useDraft.type = "button";
+  $("graph-reset").before(useDraft);
+  useDraft.addEventListener("click", () => {
+    try {
+      if (!confirm("保留图形中的设备和连接；应用时以图形设备参数为准，并沿用当前参数表的实验设置。继续？")) return;
+      const current = readDraft(); base = clone(current); mode = $("model-mode").value;
+      contextKey = versionKey(); sourceStamp = fingerprint(current); render(); sync();
+      hint("已保留图形和当前实验设置，请核对设备参数后应用。");
+    } catch (error) { hint(error.message, true); }
+  });
   const label = item => item?.data.name || "未命名";
   const hint = (message, error = false) => { text("graph-hint", message); $("graph-hint").classList.toggle("error", error); };
   const point = event => { const box = canvas.getBoundingClientRect(); return {x: event.clientX - box.left, y: event.clientY - box.top}; };
@@ -51,12 +83,11 @@
     let current;
     try { current = readDraft(); }
     catch (error) { window.StudioWorkspace.openModel(); showError("model-error", error); return; }
-    let replaced = false;
-    if (!graph || stale() || sourceStamp !== fingerprint(current)) {
-      replaced = Boolean(graph && graphChanged()); initialize(current);
-    }
+    if (!graph || contextKey?.split("/")[0] !== state.session.id) {
+      saveDraft(); if (!recoverDraft()) initialize(current);
+    } else if (conflict() && !graphChanged()) initialize(current);
     render(); dialog.showModal();
-    hint(replaced ? "输入模型已变化，已按当前输入重新建立图形。" : "拖入设备与容器，再从输出端拖向输入端建立连接。关闭窗口会保留本次图形草稿。");
+    hint(conflict() ? "输入模型已变化，旧图形草稿和撤销记录已保留。请选择保留图形，或重新载入输入模型。" : "拖入设备与容器，再从输出端拖向输入端建立连接。关闭窗口会保留本次图形草稿。");
   }
   function remember(before) {
     if (JSON.stringify(before) === JSON.stringify(graph)) return;
@@ -227,7 +258,8 @@
     openButton.disabled = modelButton.disabled = unavailable();
     openButton.textContent = graphChanged() && !stale() ? "图形建模 · 草稿" : "图形建模";
     if (!graph) return;
-    for (const id of ["graph-apply", "graph-run"]) $(id).disabled = !editable() || !lastInspection?.ok;
+    saveDraft(); useDraft.hidden = !conflict(); useDraft.disabled = unavailable();
+    for (const id of ["graph-apply", "graph-run"]) $(id).disabled = !editable() || conflict() || !lastInspection?.ok;
     $("graph-undo").disabled = !editable() || !undo.length; $("graph-redo").disabled = !editable() || !redo.length;
     $("graph-arrange").disabled = !editable(); $("graph-reset").disabled = unavailable();
     $("graph-add-machine").disabled = !editable() || graph.nodes.filter(item => item.type === "machine").length >= 12;
@@ -261,6 +293,7 @@
     const layoutSaved = storeLayout(config);
     renderEditor(config, nextMode); state.dirty = dirty || changed; updateControls();
     base = clone(config); mode = nextMode; sourceStamp = fingerprint(config); savedGraph = JSON.stringify(graph); sync();
+    window.StudioDrafts?.save();
     dialog.close();
     if (run) await applyModel();
     else { window.StudioWorkspace.openModel(); toast(layoutSaved ? "图形已应用到输入模型。检查参数后可保存并运行。" : "模型已应用；画布位置未能保存到本机。请检查参数后运行。"); }
@@ -330,7 +363,10 @@
   $("graph-undo").addEventListener("click", () => restore("undo")); $("graph-redo").addEventListener("click", () => restore("redo"));
   $("graph-delete").addEventListener("click", removeSelected);
   $("graph-arrange").addEventListener("click", () => change(() => { const result = G.inspect(graph, base, mode, state.bootstrap.template); G.arrange(graph, result.ok ? result.order : undefined); }));
-  $("graph-reset").addEventListener("click", () => { try { initialize(readDraft()); render(); hint("已重新载入当前输入模型。"); } catch (error) { hint(error.message, true); } });
+  $("graph-reset").addEventListener("click", () => { try {
+    if (graphChanged() && !confirm("重新载入将放弃当前图形草稿及撤销记录，是否继续？")) return;
+    initialize(readDraft()); render(); hint("已重新载入当前输入模型。");
+  } catch (error) { hint(error.message, true); } });
   for (const button of [openButton, modelButton]) button.addEventListener("click", action(open, "global-error"));
   for (const [id, run] of [["graph-apply", false], ["graph-run", true]]) $(id).addEventListener("click", async () => {
     try { await apply(run); }
@@ -339,5 +375,9 @@
       else { window.StudioWorkspace.openModel(); showError("model-error", error); }
     }
   });
-  window.StudioVisualEditor = {sync}; sync();
+  window.StudioVisualEditor = {sync, hasDraft: () => {
+    if (graphChanged() && contextKey?.split("/")[0] === state.session?.id) return true;
+    try { return Boolean(state.session && localStorage.getItem(draftKey(state.session.id))); } catch { return false; }
+  }}; sync();
+  window.addEventListener("beforeunload", saveDraft);
 })();

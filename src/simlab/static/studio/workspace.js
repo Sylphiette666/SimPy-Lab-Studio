@@ -67,7 +67,7 @@
     text("workspace-model-summary", version
       ? `${version.config.machines.length} 台设备 · ${version.config.buffers.length} 个缓冲区 · ${durationLabel(version.config.until_seconds)} · ${version.config.replications} 次重复`
       : "正在载入输入模型…");
-    text("workflow-status", state.adjusting ? "已暂停 · AI 正在创建新方案"
+    text("workflow-status", state.adjusting ? "已暂停 · AI 方案生成或等待确认中"
       : hasPending("preview") ? "正在计算预览 · 就绪后自动播放"
       : state.dirty ? "模型有修改 · 应用后重新运行"
       : state.playing ? "运行预览 · 可以随时暂停或发送调整指令"
@@ -75,7 +75,7 @@
       : state.frames.length ? "预览已就绪 · 点击播放继续观察"
       : "先检查输入模型，再运行预览");
     text("assistant-flow-message", state.adjusting
-      ? "回放已暂停，正在校验 AI 修改。新方案将从初始状态运行。"
+      ? "回放已暂停。查看修改预览并确认后，才会应用新方案。"
       : "输入和切换模型不影响回放；发送指令时暂停。" );
     $("assistant-flow-message").classList.toggle("working", state.adjusting);
     document.body.dataset.playing = String(state.playing);
@@ -111,6 +111,8 @@
       return paragraphs;
     }
     paragraphs.push(`评估口径：${durationLabel(version.config.until_seconds)}（含 ${durationLabel(version.config.warmup_seconds)}预热），${version.config.replications} 次独立重复；下列比较来自完整评估均值。`);
+    const validN = Math.min(...(study.summary || []).filter(row => metrics.some(metric => metric.key === row.metric)).map(row => row.n ?? 0));
+    if (validN < 30) paragraphs.push(`样本量提示：关键指标最少只有 ${validN} 次有效重复。当前使用正态近似区间，小样本的不确定性可能被低估；建议增加重复次数并检查区间稳定性。30 次也不保证足够精确。`);
     const currentIndex = state.session.versions.findIndex((item) => item.id === version.id);
     const prior = state.session.versions.slice(0, currentIndex).find((item) => studyForVersion(item.id) && comparison(version, item));
     if (prior) {

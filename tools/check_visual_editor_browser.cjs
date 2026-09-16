@@ -139,8 +139,8 @@ const path = require('node:path');
     checks.push('Opening and editing a graph keeps an existing preview playing; keyboard movement works; the editor fits small windows and saved layout/model recover after reload.');
     // Keep the original source form intact if another input change arrived while this graph was open.
     await page.evaluate(()=>{document.querySelector('#machine-0-cycle_time_seconds').value='360';setDirty();});
-    await page.locator('#graph-apply').click();
-    assert.match(await page.locator('#graph-hint').textContent(),/输入模型已变化/);
+    assert.equal(await page.locator('#graph-apply').isDisabled(),true);
+    assert.equal(await page.locator('#graph-keep-draft').isVisible(),true);
     assert.equal(await page.locator('#visual-model-dialog').evaluate(item=>item.open),true);
     await page.locator('#graph-reset').click(); await card('n1').click();
     assert.equal(await page.locator('#graph-param-cycle_time_seconds').inputValue(),'360');

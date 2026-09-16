@@ -216,17 +216,19 @@ def _self_test(folder: Path, report: Path) -> int:
     try:
         url = server.start()
 
-        def request(route, body=None, *, method=None):
+        def request(route, body=None, *, method=None, headers=None):
             payload = None if body is None else json.dumps(body).encode()
             req = urllib.request.Request(
-                url + route, data=payload, headers={"Content-Type": "application/json"},
+                url + route, data=payload,
+                headers={"Content-Type": "application/json", **(headers or {})},
                 method=method,
             )
             with urllib.request.urlopen(req, timeout=30) as response:
                 return json.load(response)
 
         bootstrap = request("/api/studio/bootstrap")
-        for asset in ("/", "/static/app.js", "/static/style.css", "/static/app.ico"):
+        for asset in ("/", "/static/app.js", "/static/style.css", "/static/app.ico",
+                      "/static/adjustments.js", "/static/drafts.js", "/static/visual-editor.js"):
             with urllib.request.urlopen(url + asset, timeout=10) as response:
                 assert response.status == 200 and response.read()
         config = bootstrap["template"]
@@ -263,12 +265,17 @@ def _self_test(folder: Path, report: Path) -> int:
             loaded = next(item for item in request(profiles_route)["profiles"]
                           if item["id"] == profile_id)
             assert loaded["has_key"] and loaded["remember_key"] and not loaded["key_storage_error"]
+            recovered = request(profiles_route + "/" + profile_id + "/key",
+                                {"base_url": loaded["base_url"]},
+                                headers={"X-Simlab-Key-Access": "settings"})
+            assert recovered == {"api_key": secret}
             request(profiles_route + "/" + profile_id, method="DELETE")
             assert profile_id not in json.loads(
                 (folder / "experiments/ai_profiles.json").read_text("utf-8")
             ).get("protected_keys", {})
             checks.extend([
-                "encrypted credential survives server restart", "saved credential removal",
+                "encrypted credential survives server restart", "settings key autofill",
+                "saved credential removal",
             ])
         result.update(ok=True, checks=checks)
     except Exception as exc:

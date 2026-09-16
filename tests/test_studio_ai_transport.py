@@ -53,7 +53,8 @@ def response_body(*, status="completed", reason=None, content=None):
     }
 
 
-def invoke(body, *, protocol="responses", endpoint="https://api.deepseek.com/v1", code=200):
+def invoke(body, *, protocol="responses", endpoint="https://api.deepseek.com/v1", code=200,
+           model="deepseek-v4-flash"):
     requests = []
 
     def respond(request):
@@ -61,7 +62,7 @@ def invoke(body, *, protocol="responses", endpoint="https://api.deepseek.com/v1"
         return httpx.Response(code, json=body)
 
     settings = AISettings(
-        model="deepseek-v4-flash",
+        model=model,
         api_key="sk-private-test-key",
         base_url=endpoint,
         api_format=protocol,
@@ -193,7 +194,8 @@ def test_model_name_does_not_send_deepseek_options_to_other_providers(endpoint):
         ("content_filter", "", "过滤"),
     ],
 )
-def test_deepseek_chat_protocol_uses_non_thinking_json(finish, content, expected):
+@pytest.mark.parametrize("model", ["deepseek-v4-flash", "deepseek-flash"])
+def test_deepseek_chat_protocol_uses_non_thinking_json(finish, content, expected, model):
     body = {
         "id": "chat_test",
         "object": "chat.completion",
@@ -207,7 +209,8 @@ def test_deepseek_chat_protocol_uses_non_thinking_json(finish, content, expected
             }
         ],
     }
-    result, request, payload = invoke(body, protocol="chat_completions")
+    result, request, payload = invoke(body, protocol="chat_completions", model=model)
+    assert payload["model"] == model
     assert request.url.path == "/v1/chat/completions"
     assert payload["thinking"] == {"type": "disabled"}
     assert payload["max_tokens"] == 8192

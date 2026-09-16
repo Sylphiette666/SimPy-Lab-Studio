@@ -30,6 +30,7 @@ from simlab.manufacturing import (
     case_a_config,
     validate_case_a_adaptation,
 )
+from simlab.studio_adjustments import AdjustmentService
 from simlab.studio_ai import (
     AdjustmentProposal,
     AISettings,
@@ -80,6 +81,10 @@ class AdjustModel(_Body):
     ai_profile_id: str | None = Field(default=None, min_length=1, max_length=36)
 
 
+class ProposeModel(AdjustModel):
+    request_id: str = Field(default_factory=lambda: str(uuid.uuid4()), max_length=36)
+
+
 class NewRun(_Body):
     version_id: str
     kind: Literal["preview", "study"] = "preview"
@@ -89,6 +94,10 @@ class UpdateAI(_Body):
     model: str = Field(min_length=1, max_length=160)
     base_url: str = Field(default="", max_length=1000)
     api_key: str | None = Field(default=None, max_length=4096, repr=False)
+
+
+class ReadProfileKey(_Body):
+    base_url: str = Field(max_length=1000)
 
 
 def _now() -> str:
@@ -386,14 +395,34 @@ def create_studio_app(
         store.root / "ai_profiles.json", AISettings.from_environment(), store.lock
     )
     executor = ThreadPoolExecutor(max_workers=2, thread_name_prefix="simlab-studio")
+    adjustments = AdjustmentService(store, profiles, agent_factory, _validate, _differences)
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
         yield
+        adjustments.close()
         executor.shutdown(wait=False, cancel_futures=True)
 
     app = FastAPI(title="SimPy 制造仿真实验室", lifespan=lifespan)
     app.state.store = store
+    app.state.adjustments = adjustments
+
+    @app.post(ROOT + "/sessions/{session_id}/adjustments", status_code=202)
+    def propose_adjustment(session_id: str, body: ProposeModel):
+        _identifier(body.request_id)
+        return adjustments.start(session_id, body)
+
+    @app.get(ROOT + "/sessions/{session_id}/adjustments/{request_id}")
+    def get_adjustment(session_id: str, request_id: str):
+        return adjustments.get(session_id, request_id)
+
+    @app.post(ROOT + "/sessions/{session_id}/adjustments/{request_id}/cancel")
+    def cancel_adjustment(session_id: str, request_id: str):
+        return adjustments.cancel(session_id, request_id)
+
+    @app.post(ROOT + "/sessions/{session_id}/adjustments/{request_id}/apply")
+    def apply_adjustment(session_id: str, request_id: str):
+        return adjustments.apply(session_id, request_id)
 
     @app.middleware("http")
     async def local_browser_guard(request: Request, call_next: Callable):
@@ -455,6 +484,18 @@ def create_studio_app(
     @app.get(ROOT + "/ai/profiles")
     def list_ai_profiles():
         return profiles.catalog(injected=agent_factory is not None)
+
+    @app.post(ROOT + "/ai/profiles/{profile_id}/key")
+    def read_profile_key(profile_id: str, body: ReadProfileKey, request: Request):
+        # Deliberate settings-only POST; the ordinary catalog and exports stay secret-free.
+        # The local browser guard enforces same-origin writes and rejects cross-site requests.
+        if request.headers.get("x-simlab-key-access") != "settings":
+            raise HTTPException(403, "请从模型接入窗口读取密钥。")
+        with store.lock:
+            current = profiles.snapshot(profile_id)
+            if body.base_url.strip().rstrip("/") != current.base_url:
+                raise HTTPException(409, "服务地址已变化，请填写新服务的密钥。")
+            return {"api_key": current.api_key}
 
     @app.post(ROOT + "/ai/profiles", status_code=201)
     def create_ai_profile(body: ProfileInput):

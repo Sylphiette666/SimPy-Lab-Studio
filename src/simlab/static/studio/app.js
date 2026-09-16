@@ -135,7 +135,7 @@ function updateControls() {
   $("model-body").setAttribute("aria-busy", String(state.busy || state.adjusting));
   $("send-prompt").disabled = unavailable || !$("prompt").value.trim();
   $("prompt").disabled = state.adjusting;
-  $("adjust-progress").hidden = !state.adjusting;
+  $("adjust-progress").hidden = !state.adjusting || state.adjustmentStatus === "ready";
   for (const button of document.querySelectorAll(".version-restore")) button.disabled = unavailable;
   text("apply-model", state.dirty ? "应用修改并预览 →" : "保存模型并预览 →");
   text("save-status", state.dirty ? "有未应用的模型修改" : "模型与结果保存在本机");
@@ -143,7 +143,7 @@ function updateControls() {
   window.StudioTopology?.sync();
   window.StudioVisualEditor?.sync();
 }
-function setDirty() { state.dirty = true; updateControls(); }
+function setDirty() { state.dirty = true; updateControls(); window.StudioDrafts?.save(); }
 function renderAI() {
   const ai = state.ai || {};
   text("ai-status", ai.available ? "已配置" : "待配置");
@@ -281,6 +281,7 @@ async function applyModel() {
       const session = await api(sessionPath("/versions"), {method: "POST", body: {
         config, mode, label: "手动调整", expected_version_id: state.session.active_version_id,
       }});
+      state.dirty = false; window.StudioDrafts?.clear();
       acceptSession(session);
       toast("修改已保存为新版本，正在生成预览。");
     } else state.dirty = false;
@@ -290,6 +291,7 @@ async function applyModel() {
   } finally { state.busy = false; updateControls(); }
 }
 function acceptSession(session) {
+  window.StudioDrafts?.save();
   const previousHead = state.session?.active_version_id;
   state.session = session; persistSession();
   for (const run of session.runs) {
@@ -298,6 +300,8 @@ function acceptSession(session) {
   }
   const version = activeVersion();
   renderEditor(version.config, version.mode);
+  window.StudioDrafts?.recover();
+  window.StudioAdjustments?.recover();
   text("version-badge", `V${session.versions.findIndex((item) => item.id === version.id)} · ${version.mode === "paper" ? "论文模式" : "自定义模式"}`);
   text("active-label", versionName(version));
   if (previousHead !== session.active_version_id) resetReplay();
@@ -659,31 +663,55 @@ function renderMessages() {
   window.StudioConversation.render(messages, state.session);
 }
 async function adjustModel() {
-  const prompt = $("prompt").value.trim(); if (!prompt) return;
-  if (!state.ai?.available) { await openSettings(); toast("保存模型连接后即可发送这条提示词。"); return; }
-  if (state.dirty) { toast("请先在“输入模型”中应用修改，再让 AI 根据当前版本调整。"); return; }
-  const previousHead = state.session.active_version_id;
-  state.adjusting = true; state.requestAI = clone(state.ai); pause(); renderAI();
-  state.pendingMessages = [{role: "user", content: prompt, pending: true}]; renderMessages();
-  try {
-    const session = await api(sessionPath("/adjust"), {method: "POST", body: {
-      prompt, expected_version_id: previousHead, ai_profile_id: state.requestAI.profile_id,
-    }});
-    state.pendingMessages = []; $("prompt").value = ""; acceptSession(session);
-    if (session.active_version_id !== previousHead) {
-      state.adjusting = false;
-      await startRun("preview", true); toast("AI 修改已通过校验，正在预览新方案。");
-    } else toast("AI 已回复，本轮没有变更模型参数。");
-  } catch (error) {
-    state.pendingMessages = [{role: "user", content: prompt}, {role: "error", content: error.message, ai_config: state.requestAI}]; renderMessages();
-  } finally { state.adjusting = false; state.requestAI = null; renderAI(); }
+  return window.StudioAdjustments.begin();
 }
 
+const aiKeyField = {generation: 0, source: "empty", endpoint: "", loading: false, failed: false};
+const aiEndpoint = (url) => (url || "").trim().replace(/\/+$/, "");
+function hideAIKey() {
+  $("ai-api-key").type = "password";
+  text("toggle-ai-key", "显示"); $("toggle-ai-key").setAttribute("aria-pressed", "false");
+}
+function invalidateAIKey(source = "empty") {
+  aiKeyField.generation += 1; aiKeyField.source = source;
+  aiKeyField.loading = false; aiKeyField.failed = false;
+}
+function changeAIEndpoint() {
+  if (aiEndpoint($("ai-base-url").value) !== aiKeyField.endpoint) {
+    if (aiKeyField.source === "stored" || aiKeyField.loading) $("ai-api-key").value = "";
+    invalidateAIKey(aiKeyField.source === "typed" ? "typed" : "empty"); hideAIKey();
+  }
+  updateAIEditorControls();
+}
+async function loadAIKey(profile) {
+  invalidateAIKey(profile.key_source || "empty"); hideAIKey();
+  aiKeyField.endpoint = aiEndpoint(profile.base_url);
+  if (profile.key_source === "typed" || profile.clear_key) return;
+  if (profile.key_source === "stored" && profile.key_endpoint === aiKeyField.endpoint && profile.api_key) return;
+  $("ai-api-key").value = "";
+  const saved = state.aiProfiles?.profiles.find((item) => item.id === state.aiEditorId);
+  if (!saved?.has_key || aiEndpoint(saved.base_url) !== aiKeyField.endpoint) return;
+  const generation = aiKeyField.generation, id = state.aiEditorId;
+  aiKeyField.loading = true; aiKeyField.source = "stored";
+  updateAIEditorControls();
+  try {
+    const result = await api(`/ai/profiles/${encodeURIComponent(id)}/key`, {method: "POST",
+      headers: {"X-Simlab-Key-Access": "settings"}, body: {base_url: aiKeyField.endpoint}});
+    if (generation !== aiKeyField.generation || !$("settings-dialog").open) return;
+    $("ai-api-key").value = result.api_key || "";
+  } catch {
+    if (generation !== aiKeyField.generation) return;
+    aiKeyField.failed = true;
+  } finally {
+    if (generation === aiKeyField.generation) { aiKeyField.loading = false; updateAIEditorControls(); }
+  }
+}
 function readAIEditor() {
   return {name: $("ai-profile-name").value.trim(), model: $("ai-model").value.trim(),
     base_url: $("ai-base-url").value.trim(), api_format: $("ai-format").value,
     api_key: $("ai-api-key").value.trim(), clear_key: $("ai-clear-key").checked,
-    remember_key: $("ai-remember-key").checked};
+    remember_key: $("ai-remember-key").checked,
+    key_source: aiKeyField.source, key_endpoint: aiKeyField.endpoint};
 }
 function retainAIDraft() {
   if (state.aiEditorId) state.aiDrafts.set(state.aiEditorId, readAIEditor());
@@ -697,17 +725,20 @@ function updateAIEditorControls() {
   $("activate-ai-profile").disabled = state.aiSaving || !profile || active;
   $("activate-ai-profile").hidden = !profile || active;
   $("ai-api-key").disabled = state.aiSaving || $("ai-clear-key").checked;
+  $("toggle-ai-key").disabled = state.aiSaving || $("ai-clear-key").checked || !$("ai-api-key").value;
   $("ai-remember-key").disabled = state.aiSaving || $("ai-clear-key").checked ||
     (!state.aiProfiles?.key_storage_available && !profile?.remember_key);
   const endpoint = (url) => url.trim().replace(/\/+$/, "");
   const newEndpoint = profile && endpoint($("ai-base-url").value) !== endpoint(profile.base_url || "");
   const remember = $("ai-remember-key").checked;
   text("ai-key-state", $("ai-clear-key").checked ? "保存后将移除此配置在本次运行中和本机保存的密钥。"
-    : $("ai-api-key").value.trim() ? (remember ? "保存后将使用新密钥，并在本机加密保存。" : "新密钥仅在本次运行中使用。")
+    : aiKeyField.loading ? "正在读取已配置的密钥…"
+    : aiKeyField.failed ? "密钥回填失败，可关闭后重新打开；原有配置仍保留。"
+    : $("ai-api-key").value.trim() && aiKeyField.source !== "stored" ? (remember ? "保存后将使用新密钥，并在本机加密保存。" : "新密钥仅在本次运行中使用。")
     : newEndpoint ? "服务地址已更改，请填写新服务的密钥。"
     : profile?.key_storage_error ? "已保存的密钥无法读取，请重新填写或移除。"
-    : profile?.remember_key ? (remember ? "密钥已在本机加密保存；留空保留。" : "保存后移除本机密钥副本，仅保留到本次软件退出。")
-    : profile?.has_key ? (remember ? "保存后将加密保存此配置正在使用的密钥。" : "此配置密钥仅本次运行有效；留空保留。")
+    : profile?.remember_key ? (remember ? "密钥已在本机加密保存；默认遮挡，点击“显示”查看。" : "保存后移除本机密钥副本，仅保留到本次软件退出。")
+    : profile?.has_key ? (remember ? "保存后将加密保存此配置正在使用的密钥。" : "已配置密钥，仅本次运行有效；勾选下方选项可在重启后保留。")
     : "此配置尚未提供密钥，可以先保存配置。");
   text("ai-key-storage-note", !state.aiProfiles?.key_storage_available
     ? "当前系统不支持本机加密保存。仍可仅本次运行使用，或移除已有密钥。"
@@ -734,6 +765,7 @@ function renderAIEditor(id) {
   $("ai-clear-key").checked = Boolean(profile.clear_key);
   $("ai-api-key").placeholder = profile.available ? "留空保留同一服务的现有密钥" : "输入该 API 服务的密钥";
   $("ai-service-preset").value = "";
+  loadAIKey(profile);
   showError("settings-error", null); updateAIEditorControls();
 }
 function setAISettingsBusy(busy) {
@@ -762,7 +794,7 @@ async function switchAIProfile(id) {
 }
 function newAIProfile(copy = false) {
   retainAIDraft();
-  const draft = copy ? {...readAIEditor(), name: `${$("ai-profile-name").value.trim()} 副本`.slice(0, 60), api_key: "", clear_key: false, remember_key: false}
+  const draft = copy ? {...readAIEditor(), name: `${$("ai-profile-name").value.trim()} 副本`.slice(0, 60), api_key: "", key_source: "empty", key_endpoint: "", clear_key: false, remember_key: false}
     : {name: "新的模型连接", model: "", base_url: "", api_format: "auto", api_key: "", clear_key: false, remember_key: false};
   state.aiDrafts.set("new", draft); renderAIEditor("new"); $("ai-profile-name").focus();
 }
@@ -771,19 +803,22 @@ function fillAIService() {
   if (!preset) return;
   const templates = {
     openai: {name: "OpenAI", model: "gpt-4.1-mini", base_url: "https://api.openai.com/v1", api_format: "auto"},
-    deepseek: {name: "DeepSeek", model: "deepseek-chat", base_url: "https://api.deepseek.com/v1", api_format: "chat_completions"},
+    deepseek: {name: "DeepSeek Flash", model: "deepseek-flash", base_url: "https://api.deepseek.com/v1", api_format: "chat_completions"},
+    "deepseek-v4-flash": {name: "DeepSeek V4 Flash", model: "deepseek-v4-flash", base_url: "https://api.deepseek.com/v1", api_format: "chat_completions"},
     custom: {name: "自定义模型", model: "", base_url: "", api_format: "auto"},
   };
   const template = templates[preset];
+  const sameEndpoint = aiEndpoint($("ai-base-url").value) === aiEndpoint(template.base_url);
   $("ai-profile-name").value = template.name; $("ai-model").value = template.model;
   $("ai-base-url").value = template.base_url; $("ai-format").value = template.api_format;
-  $("ai-api-key").value = ""; $("ai-clear-key").checked = false; updateAIEditorControls();
+  if (!sameEndpoint) { $("ai-api-key").value = ""; invalidateAIKey(); hideAIKey(); }
+  $("ai-clear-key").checked = false; updateAIEditorControls();
 }
 async function saveSettings() {
   const draft = readAIEditor();
   const body = {name: draft.name, model: draft.model, base_url: draft.base_url, api_format: draft.api_format,
     remember_key: draft.remember_key && !draft.clear_key};
-  if (draft.clear_key || draft.api_key) body.api_key = draft.clear_key ? "" : draft.api_key;
+  if (draft.clear_key || (draft.api_key && draft.key_source !== "stored")) body.api_key = draft.clear_key ? "" : draft.api_key;
   const creating = state.aiEditorId === "new";
   const oldIds = new Set(state.aiProfiles.profiles.map((profile) => profile.id));
   setAISettingsBusy(true);
@@ -922,10 +957,15 @@ bind("activate-ai-profile", "click", async () => {
   finally { setAISettingsBusy(false); }
 }, "settings-error");
 $("ai-service-preset").addEventListener("change", fillAIService);
-$("ai-base-url").addEventListener("input", updateAIEditorControls);
-$("ai-api-key").addEventListener("input", updateAIEditorControls);
+$("ai-base-url").addEventListener("input", changeAIEndpoint);
+$("ai-api-key").addEventListener("input", () => { invalidateAIKey("typed"); updateAIEditorControls(); });
+$("toggle-ai-key").addEventListener("click", () => {
+  const visible = $("ai-api-key").type === "password";
+  $("ai-api-key").type = visible ? "text" : "password";
+  text("toggle-ai-key", visible ? "隐藏" : "显示"); $("toggle-ai-key").setAttribute("aria-pressed", String(visible));
+});
 $("ai-remember-key").addEventListener("change", updateAIEditorControls);
-$("ai-clear-key").addEventListener("change", () => { if ($("ai-clear-key").checked) $("ai-api-key").value = ""; updateAIEditorControls(); });
+$("ai-clear-key").addEventListener("change", () => { invalidateAIKey("typed"); hideAIKey(); if ($("ai-clear-key").checked) $("ai-api-key").value = ""; updateAIEditorControls(); });
 bind("edit-breaks", "click", editBreaks);
 bind("breaks-form", "submit", saveBreaks, "breaks-error");
 bind("add-break", "click", () => appendBreak());
@@ -947,7 +987,7 @@ $("prompt").addEventListener("input", updateControls);
 $("prompt").addEventListener("keydown", (event) => { if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) { event.preventDefault(); if (!$("send-prompt").disabled) $("prompt-form").requestSubmit(); } });
 document.querySelectorAll(".prompt-chip").forEach((button) => button.addEventListener("click", () => { $("prompt").value = button.dataset.prompt; $("prompt").focus(); updateControls(); }));
 document.querySelectorAll(".close-dialog").forEach((button) => button.addEventListener("click", () => button.closest("dialog").close()));
-$("settings-dialog").addEventListener("close", () => { $("ai-api-key").value = ""; state.aiDrafts.clear(); });
+$("settings-dialog").addEventListener("close", () => { invalidateAIKey(); hideAIKey(); $("ai-api-key").value = ""; state.aiDrafts.clear(); });
 $("settings-dialog").addEventListener("cancel", (event) => { if (state.aiSaving) event.preventDefault(); });
 $("toggle-model").addEventListener("click", () => {
   const expanded = $("toggle-model").getAttribute("aria-expanded") === "true";
