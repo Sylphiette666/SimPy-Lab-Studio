@@ -1,0 +1,78 @@
+.studio-workspace .visual-model-modal { width:1460px; height:calc(100dvh - 36px); max-width:calc(100vw - 32px); max-height:calc(100dvh - 36px); padding:0; overflow:hidden; }
+.studio-workspace .visual-model-modal[open] { display:flex; flex-direction:column; }
+.studio-workspace .visual-model-heading { display:flex; align-items:center; justify-content:space-between; padding:16px 22px 12px; border-bottom:1px solid #e2eae0; flex-shrink:0; }
+.studio-workspace .visual-model-heading h2 { font-size:20px; margin:3px 0 0; }
+.studio-workspace .visual-model-heading .eyebrow { margin:0; font-size:9px; letter-spacing:2px; }
+.studio-workspace .visual-model-tools { display:flex; align-items:center; gap:6px; padding:8px 18px; flex-shrink:0; flex-wrap:wrap; background:#f7faf6; }
+.studio-workspace #graph-summary { margin-right:auto; font-size:12px; color:#507354; }
+.studio-workspace .visual-model-tools .button { font-size:11px; min-height:29px; padding:4px 8px; }
+.studio-workspace .graph-hint { padding:7px 20px; margin:0; font-size:11px; color:#4e745a; border-bottom:1px solid #e2eae0; flex-shrink:0; }
+.studio-workspace .graph-hint.error { color:#a35240; background:#fff4ed; }
+.studio-workspace .visual-model-body { display:grid; grid-template-columns:150px minmax(0,1fr) 250px; flex:1; min-height:0; overflow:hidden; }
+.studio-workspace .graph-palette { padding:18px 12px; overflow:auto; border-right:1px solid #e0e8de; }
+.studio-workspace .graph-palette h3,.studio-workspace .graph-inspector h3 { font-size:12px; margin:0 0 12px; }
+.studio-workspace .graph-palette-item { display:flex; flex-direction:column; align-items:flex-start; gap:5px; width:100%; padding:13px 10px; margin-bottom:12px; border:1px solid #c6d9ca; background:#f6faf2; color:#315e43; border-radius:9px; cursor:grab; }
+.studio-workspace .graph-palette-item:active { cursor:grabbing; }
+.studio-workspace .graph-palette-item strong { font-size:12px; }
+.studio-workspace .graph-palette-item small { font-size:9px; color:#779274; }
+.studio-workspace .graph-symbol { font-size:26px; line-height:1; }
+.studio-workspace .graph-connection-guide { padding:12px 8px; border:1px dashed #b8ccbe; border-radius:9px; font-size:10px; line-height:1.8; }
+.studio-workspace .graph-connection-guide span { display:block; font-size:16px; white-space:nowrap; color:#61936f; }
+.studio-workspace .graph-rules { margin:16px 0; font-size:10px; line-height:1.9; color:#73856b; }
+.studio-workspace .graph-viewport { min-width:0; overflow:auto; position:relative; overscroll-behavior:contain; background:#f8fbf6; }
+.studio-workspace .graph-canvas { position:relative; background-image:radial-gradient(#bed2be 1px,transparent 1px); background-size:20px 20px; }
+.studio-workspace #graph-edges { position:absolute; inset:0; width:100%; height:100%; overflow:visible; pointer-events:none; }
+.studio-workspace .graph-edge-hit { stroke:transparent; stroke-width:18px; fill:none; pointer-events:stroke; cursor:pointer; }
+.studio-workspace .graph-edge-line { stroke:#789d82; stroke-width:2px; fill:none; }
+.studio-workspace #graph-edges .selected .graph-edge-line,.studio-workspace #graph-edges g:focus .graph-edge-line { stroke:#cf963e; stroke-width:4px; }
+.studio-workspace .graph-edge-draft { stroke:#1e8066; stroke-width:2px; stroke-dasharray:6 4; fill:none; pointer-events:none; }
+.studio-workspace .graph-node { position:absolute; width:154px; height:88px; }
+.studio-workspace .graph-node-card { width:100%; height:100%; display:flex; flex-direction:column; justify-content:center; align-items:flex-start; gap:5px; background:#fff; border:1px solid #bfd1c2; border-radius:10px; padding:11px 16px; box-shadow:0 4px 10px #284a3410; text-align:left; color:#345c42; cursor:grab; touch-action:none; user-select:none; }
+.studio-workspace .graph-node-card strong { width:100%; font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.studio-workspace .graph-node-card small { font-size:9px; color:#6e896f; }
+.studio-workspace .graph-node-kind { font-size:10px; color:#6e936f; }
+.studio-workspace .graph-node.buffer .graph-node-card { border-color:#d2d8b5; background:#f6f8eb; }
+.studio-workspace .graph-node.source .graph-node-card,.studio-workspace .graph-node.sink .graph-node-card { border-style:dashed; background:#ebf4e9; }
+.studio-workspace .graph-node.selected .graph-node-card { outline:2px solid #387d60; outline-offset:2px; }
+.studio-workspace .graph-node.invalid .graph-node-card { border-color:#cb9d65; }
+.studio-workspace .graph-port { position:absolute; top:35px; width:18px; height:18px; border:2px solid #6c9a7d; border-radius:50%; background:#fff; padding:0; cursor:crosshair; touch-action:none; z-index:1; }
+.studio-workspace .graph-port.in { left:-9px; }
+.studio-workspace .graph-port.out { right:-9px; background:#5f9477; }
+.studio-workspace .graph-port:hover,.studio-workspace .graph-port:focus,.studio-workspace .graph-node.connecting .graph-port.out { outline:4px solid #9acbaf80; }
+.studio-workspace .graph-inspector { padding:18px 16px; border-left:1px solid #dfe8dc; overflow:auto; min-width:0; }
+.studio-workspace #graph-selection-title { overflow-wrap:anywhere; }
+.studio-workspace #graph-selection-note { font-size:10px; line-height:1.8; margin-bottom:14px; }
+.studio-workspace .graph-properties { display:flex; flex-direction:column; gap:10px; }
+.studio-workspace .graph-properties .field input { width:100%; min-width:0; font-size:12px; padding:7px 9px; }
+.studio-workspace .graph-delete { margin-top:16px; color:#a16d4d; font-size:11px; width:100%; }
+.studio-workspace .graph-validation { margin-top:22px; padding-top:14px; border-top:1px solid #e2e8dd; }
+.studio-workspace #graph-validation-status { font-size:11px; color:#508160; }
+.studio-workspace #graph-validation-status.invalid { color:#a17447; }
+.studio-workspace #graph-issues { padding-left:16px; margin:9px 0; font-size:10px; line-height:1.8; color:#947347; }
+.studio-workspace #graph-issues li { margin-bottom:8px; }
+.studio-workspace #graph-issues button { padding:0; background:transparent; border:0; color:inherit; text-align:left; text-decoration:underline; text-underline-offset:2px; }
+.studio-workspace .visual-model-footer { display:flex; align-items:center; gap:14px; justify-content:space-between; padding:14px 20px; border-top:1px solid #dfe8dc; background:white; flex-shrink:0; }
+.studio-workspace .visual-model-footer > div { display:flex; gap:9px; }
+.studio-workspace #graph-save-status { font-size:11px; color:#658367; }
+.studio-workspace #edit-model-graph { margin:10px 0 0; font-size:11px; }
+@media(max-width:1050px) {
+  .studio-workspace .visual-model-body { grid-template-columns:122px minmax(0,1fr) 215px; }
+  .studio-workspace .graph-inspector { padding:12px; }
+  .studio-workspace .graph-palette { padding:12px 8px; }
+  .studio-workspace .visual-model-footer { flex-wrap:wrap; padding:10px 14px; }
+  .studio-workspace .simulation-actions { gap:5px; flex-wrap:wrap; }
+}
+@media(max-width:700px) {
+  .studio-workspace .visual-model-heading { padding:12px; }
+  .studio-workspace .visual-model-body { grid-template-columns:minmax(0,1fr) 145px; grid-template-rows:80px minmax(0,1fr); }
+  .studio-workspace .graph-palette { grid-column:1/-1; display:flex; padding:6px 10px; gap:8px; border-bottom:1px solid #dfe8dc; overflow:auto; }
+  .studio-workspace .graph-palette h3,.studio-workspace .graph-rules,.studio-workspace .graph-connection-guide,.studio-workspace .graph-symbol { display:none; }
+  .studio-workspace .graph-palette-item { margin:0; min-width:136px; padding:8px; justify-content:center; }
+  .studio-workspace .graph-inspector { padding:9px; }
+  .studio-workspace #graph-summary { width:100%; }
+  .studio-workspace .graph-hint { padding:6px 10px; font-size:10px; }
+  .studio-workspace .visual-model-footer { gap:7px; padding:8px; }
+  .studio-workspace .visual-model-footer .button { font-size:10px; padding:7px; }
+  .studio-workspace .visual-model-heading h2 { font-size:17px; }
+  .studio-workspace .visual-model-tools { padding:6px 8px; gap:2px; }
+}

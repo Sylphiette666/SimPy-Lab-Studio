@@ -1,0 +1,5 @@
+# Preserve the upstream translation exactly, including its original whitespace.
+installer/ChineseSimplified.isl -text -whitespace
+
+# Keep downloaded third-party bytes identical to the checked integrity manifest.
+src/simlab/static/studio/vendor/** -text -whitespace

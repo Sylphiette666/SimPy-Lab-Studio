@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#153f39">
+  <title>SimPy Lab Studio · v1.2.0</title>
+  <link rel="icon" href="/static/app.ico">
+  <link rel="stylesheet" href="/static/style.css">
+  <link rel="stylesheet" href="/static/workspace.css">
+  <link rel="stylesheet" href="/static/vendor/katex/dist/katex.min.css">
+  <link rel="stylesheet" href="/static/conversation.css">
+  <link rel="stylesheet" href="/static/visual-editor.css">
+  <script src="/static/vendor/marked/lib/marked.umd.js" defer></script>
+  <script src="/static/vendor/dompurify/dist/purify.min.js" defer></script>
+  <script src="/static/vendor/katex/dist/katex.min.js" defer></script>
+  <script src="/static/conversation.js" defer></script>
+  <script src="/static/app.js" defer></script>
+  <script src="/static/workspace.js" defer></script>
+  <script src="/static/topology.js" defer></script>
+  <script src="/static/model-graph.js" defer></script>
+  <script src="/static/visual-editor.js" defer></script>
+  <script src="/static/adjustments.js" defer></script>
+  <script src="/static/drafts.js" defer></script>
+</head>
+<body class="studio-workspace">
+  <header class="app-header">
+    <a class="brand" href="/" aria-label="SimPy Lab Studio 首页"><span class="brand-symbol" aria-hidden="true">S<span>↗</span></span><span>SimPy Lab <b>Studio</b></span></a>
+    <span class="header-divider"></span><span class="header-context">制造系统仿真</span>
+    <div class="header-actions">
+      <span class="local-badge"><i></i> 本地工作空间</span>
+      <button id="ai-settings" type="button" class="button quiet"><span aria-hidden="true">⚙</span> 模型接入</button>
+      <button id="export-session" type="button" class="button" disabled><span aria-hidden="true">↗</span> 导出实验</button>
+      <button id="fullscreen-toggle" type="button" class="button quiet" title="进入全屏工作区"><span aria-hidden="true">⛶</span> 全屏</button>
+      <button id="workspace-exit" type="button" class="button" hidden>退出全屏</button>
+    </div>
+  </header>
+  <nav class="workspace-nav" aria-label="工作区导航">
+    <button id="nav-preview" type="button" class="nav-item active" aria-current="page" title="仿真预览"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M9 21h6m-3-4v4m-2-13 5 3-5 3z"/></svg><span>仿真</span></button>
+    <button id="nav-model" type="button" class="nav-item" title="编辑输入模型"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/><circle cx="9" cy="6" r="2"/><circle cx="16" cy="12" r="2"/><circle cx="8" cy="18" r="2"/></svg><span>模型</span></button>
+    <button id="nav-results" type="button" class="nav-item" title="运行结果与方案评估"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 3v17h17M8 16v-5m5 5V6m5 10V9"/></svg><span>评估</span></button>
+    <div class="nav-spacer"></div><span class="nav-version">STUDIO</span>
+  </nav>
+  <div class="workspace-heading">
+    <div class="workspace-title"><span class="workspace-breadcrumb">工作空间 <span aria-hidden="true">/</span></span><h1>仿真实验室</h1><span class="workspace-edition">v1.2.0 · 正式版</span></div>
+    <div class="workspace-heading-right"><span id="version-badge" class="version-badge">初始化中</span><button id="new-session" type="button" class="button quiet">新建实验</button></div>
+  </div>
+  <div id="global-error" class="notice error global-notice" role="alert" hidden></div>
+  <main class="workspace">
+    <section class="simulation-column" aria-label="生产线仿真工作区">
+      <section class="panel simulation-panel">
+        <div class="panel-title"><div><span class="section-number">01</span><h2>生产线仿真</h2></div><span id="simulation-status" class="status-pill">等待运行</span></div>
+        <div class="simulation-toolbar">
+          <div class="current-model"><strong id="active-label">案例一基准模型</strong><span id="workspace-model-summary" class="small muted">四设备串联生产线 · 可先编辑输入模型</span></div>
+          <div class="simulation-actions"><button id="edit-model" type="button" class="button">编辑模型</button><button id="run-preview" type="button" class="button primary" disabled><span aria-hidden="true">▶</span> 运行预览</button></div>
+        </div>
+        <div class="workflow-strip"><span class="workflow-dot" aria-hidden="true"></span><span id="workflow-status">配置输入模型，然后运行预览</span><span class="workflow-shortcut">配置 → 预览 → 评估</span></div>
+        <div class="line-stage" id="line-stage">
+          <div class="stage-overline"><span><i class="stage-icon" aria-hidden="true"></i> 串联加工线 <span class="stage-subtitle">/ 真实仿真状态</span></span><span id="line-clock">第 1 天 · 00:00:00</span></div>
+          <div class="line-scroll"><svg id="production-line" viewBox="0 0 780 238" role="img" aria-label="生产线状态，尚未运行"></svg></div>
+          <div class="line-legend"><span><i class="dot processing"></i>加工</span><span><i class="dot waiting"></i>缺料 / 待机</span><span><i class="dot blocked"></i>堵塞</span><span><i class="dot failed"></i>故障</span><span><i class="dot offshift"></i>停产</span></div>
+        </div>
+        <div class="live-strip" aria-label="当前采样状态"><div><span>已完成产品</span><strong id="live-completed">—</strong></div><div><span>加工中的设备</span><strong id="live-machines">—</strong></div><div><span>缓冲区在制品</span><strong id="live-buffer">—</strong></div></div>
+        <div class="playback-controls"><button id="play-pause" class="play-button" disabled aria-label="播放仿真回放">▶</button><button id="restart-playback" class="icon-button" disabled title="从头回放" aria-label="从头回放">↺</button><input id="seek" type="range" min="0" max="1" value="0" step="1" aria-label="仿真回放进度" disabled><span id="replay-percent" class="mono">0%</span><label class="speed-label">速度<select id="playback-speed" aria-label="回放速度"><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option><option value="5">5×</option><option value="10">10×</option></select></label></div>
+        <p id="replay-note" class="replay-note">真实仿真状态的采样回放。修改参数后创建新版本，从初始状态重新运行。</p>
+        <div id="run-progress" class="run-progress" hidden><div><span id="run-progress-text">正在计算…</span><span id="run-progress-percent"></span></div><progress id="run-progress-bar" max="1"></progress></div>
+        <div id="completion-banner" class="completion-banner" hidden><div><strong>预览完成</strong><p data-completion-status>完整评估完成后，可查看最终指标与方案对比。</p></div><button id="view-final-results" type="button" class="button">查看最终结果 <span aria-hidden="true">↗</span></button></div>
+      </section>
+    </section>
+    <aside class="workspace-dock" aria-label="动态指标与运行助手">
+      <section class="live-metrics" aria-label="实时运行指标">
+      <div class="metrics-heading"><h2>运行指标</h2><span id="metric-window" class="small muted">单次预览 · 预热后累计统计</span></div>
+      <div class="metrics-grid"><article class="metric-card"><div><span>产出率</span><span class="metric-icon">↗</span></div><strong id="metric-throughput">—</strong><span class="metric-unit">件 / 小时</span><canvas id="spark-throughput" aria-label="产出率变化曲线" role="img"></canvas></article><article class="metric-card"><div><span>平均在制品</span><span class="metric-icon">▦</span></div><strong id="metric-wip">—</strong><span class="metric-unit">件 · 时间加权</span><canvas id="spark-wip" aria-label="平均在制品变化曲线" role="img"></canvas></article><article class="metric-card"><div><span>单位产品能耗</span><span class="metric-icon">ϟ</span></div><strong id="metric-energy">—</strong><span class="metric-unit">kWh / 件</span><canvas id="spark-energy" aria-label="单位产品能耗变化曲线" role="img"></canvas></article></div>
+      </section>
+    <aside class="panel assistant-panel" aria-label="AI 运行助手"><div class="panel-title"><div><span class="ai-mark" aria-hidden="true">✳</span><h2 id="assistant-title">运行助手</h2></div><div class="assistant-heading-actions"><span id="ai-status" class="ai-status">未连接</span><button id="expand-assistant" type="button" class="button quiet" aria-expanded="false" aria-controls="assistant-dialog" aria-label="放大运行助手对话" title="放大查看完整对话">⤢ 放大</button></div></div><div class="ai-profile-bar"><div class="ai-profile-heading"><label for="ai-profile-select">当前 AI 模型</label><button id="manage-ai-profiles" type="button" class="text-button">管理接入 ↗</button></div><select id="ai-profile-select" aria-label="当前 AI 模型" disabled><option>正在载入模型配置…</option></select><p id="ai-profile-caption">可随时切换，下一条提示词使用所选模型。</p></div><div class="assistant-intro"><h3 id="assistant-flow-message">仅发送指令时暂停</h3><p>发送后暂停并生成修改预览；确认后应用。</p></div><div id="messages" class="messages" aria-live="polite"><div class="assistant-empty"><div class="empty-orbit" aria-hidden="true"><span>✳</span></div><p>仿真在继续，想法随时记下</p><span>发送你的改进目标，AI 将校验修改。<br>每个方案都会保留，随时可以恢复。</span></div></div><div id="adjust-progress" class="adjust-progress" hidden><span class="loading-dots">● ● ●</span> 正在分析模型并校验修改…</div><div class="assistant-bottom"><div class="prompt-suggestions"><button class="prompt-chip" data-prompt="不增加缓冲区容量，将第一台设备的可用率提高到 90%，观察产出率和能耗的变化。">提高首台设备可用率 <span>↗</span></button><button class="prompt-chip" data-prompt="保持缓冲区容量和加工时间不变，尝试降低平均在制品，并解释你选择调整的设备参数。">降低平均在制品 <span>↗</span></button></div><form id="prompt-form"><label for="prompt" class="sr-only">自然语言调整提示词</label><textarea id="prompt" placeholder="例如：保持缓冲容量不变，提高产出率…" rows="2" maxlength="4000"></textarea><div class="prompt-footer"><span>Ctrl + Enter 发送</span><button id="send-prompt" class="send-button" type="submit" aria-label="发送调整提示词" disabled>↑</button></div></form><p id="ai-hint" class="small muted">在“模型接入”中连接你的 AI 模型。</p></div></aside>
+    </aside>
+  </main>
+  <footer class="app-footer"><span><i aria-hidden="true"></i> SimPy Lab Studio</span><span>离散事件仿真 · 可复现实验</span><span id="save-status">模型与结果保存在本机</span></footer>
+  <dialog id="assistant-dialog" class="modal assistant-modal" aria-labelledby="assistant-title"></dialog>
+  <dialog id="visual-model-dialog" class="modal visual-model-modal" aria-labelledby="visual-model-title">
+    <header class="visual-model-heading"><div><p class="eyebrow">MODEL BUILDER</p><h2 id="visual-model-title">可视化建模</h2></div><button id="close-visual-model" class="button quiet" type="button" title="关闭窗口，保留本次图形草稿">关闭</button></header>
+    <div class="visual-model-tools"><span id="graph-summary"></span><button id="graph-undo" type="button" class="button quiet" disabled>撤销</button><button id="graph-redo" type="button" class="button quiet" disabled>重做</button><button id="graph-arrange" type="button" class="button quiet">自动排列</button><button id="graph-reset" type="button" class="button quiet">重新载入输入模型</button></div>
+    <p id="graph-hint" class="graph-hint" role="status">拖入设备与容器，再从输出端拖向输入端建立连接。</p>
+    <div class="visual-model-body">
+      <aside class="graph-palette" aria-label="建模组件"><h3>添加组件</h3>
+        <button id="graph-add-machine" type="button" class="graph-palette-item" draggable="true" data-graph-type="machine"><span class="graph-symbol" aria-hidden="true">▣</span><strong>加工设备</strong><small>拖入画布 / 点击添加</small></button>
+        <button id="graph-add-buffer" type="button" class="graph-palette-item" draggable="true" data-graph-type="buffer"><span class="graph-symbol" aria-hidden="true">▤</span><strong>缓冲容器</strong><small>拖入画布 / 点击添加</small></button>
+        <div class="graph-connection-guide"><strong>连接线</strong><span aria-hidden="true">○ ───→ ○</span><p>从节点右侧输出端拖到左侧输入端，也可依次点击两端。</p></div>
+        <p class="graph-rules">从原料连到成品；相邻设备之间需有一个容器。最多 12 台设备。</p>
+      </aside>
+      <div id="graph-viewport" class="graph-viewport" tabindex="0" aria-label="模型编辑画布，可滚动；选择节点后可用方向键移动">
+        <div id="graph-canvas" class="graph-canvas"><svg id="graph-edges" aria-label="模型连接线"></svg><div id="graph-nodes"></div></div>
+      </div>
+      <aside class="graph-inspector" aria-label="选中对象的参数"><h3 id="graph-selection-title">选择节点或连接线</h3><p id="graph-selection-note" class="small muted">点击设备或容器编辑参数，拖动卡片调整位置。</p><form id="graph-properties" class="graph-properties" novalidate></form><button id="graph-delete" type="button" class="button graph-delete" disabled>删除选中对象</button><div class="graph-validation"><h3>连接检查</h3><p id="graph-validation-status" role="status"></p><ul id="graph-issues"></ul></div></aside>
+    </div>
+    <footer class="visual-model-footer"><span id="graph-save-status">图形位置可自由调整，实际加工顺序由连接线决定。</span><div><button id="graph-apply" type="button" class="button">应用到输入模型</button><button id="graph-run" type="button" class="button primary">应用并运行预览</button></div></footer>
+  </dialog>
+  <dialog id="model-dialog" class="modal model-modal" aria-labelledby="model-dialog-title">
+    <aside class="panel model-panel" aria-label="初始模型编辑">
+      <div class="panel-title"><div><span class="section-number">01</span><h2 id="model-dialog-title">输入模型</h2></div><div class="model-heading-actions"><button id="toggle-model" class="icon-button" aria-expanded="true" aria-controls="model-body" title="收起模型面板">−</button><button id="close-model" type="button" class="icon-button" aria-label="关闭输入模型">×</button></div></div>
+      <div id="model-body">
+        <div class="model-meta"><label class="field">模型名称<input id="model-name" autocomplete="off" maxlength="100"></label><label class="field">约束模式<select id="model-mode"><option value="paper">论文案例一 · 固定缓冲容量</option><option value="custom">自定义实验 · 可调整容量</option></select></label><p id="mode-note" class="small muted">保留四设备串联结构与原始缓冲区容量。</p></div>
+        <form id="model-form"><div class="editor-section"><h3>加工设备 <span id="machine-count">4 台</span></h3><button id="add-equipment" type="button" class="button topology-add">＋ 添加设备与容器</button><p id="topology-summary" class="small muted topology-summary"></p><div id="machine-fields"></div></div><div class="editor-section"><h3>缓冲容器 <span>容量 / 转运时间</span></h3><div id="buffer-fields"></div></div><div class="editor-section"><h3>实验设置</h3><div class="field-grid"><label class="field">仿真时长 <span>天</span><input id="until-days" type="number" min="0.001" step="any" required></label><label class="field">预热时长 <span>天</span><input id="warmup-days" type="number" min="0" step="any" required></label><label class="field">独立重复次数<input id="replications" type="number" min="1" max="50" step="1" required></label><label class="field">随机种子<input id="base-seed" type="number" min="0" step="1" required></label></div><button type="button" id="edit-breaks" class="text-button">编辑每周停产时段 <span aria-hidden="true">↗</span></button><p id="break-summary" class="small muted"></p></div><div id="model-error" class="notice error" role="alert" hidden></div><div class="editor-footer"><button id="apply-model" type="submit" class="button primary full">应用修改并预览 <span aria-hidden="true">→</span></button><div class="editor-file-actions"><button type="button" id="import-config" class="text-button">导入 JSON</button><span>·</span><button type="button" id="export-config" class="text-button">导出模型</button></div></div></form>
+      </div>
+    </aside>
+  </dialog>
+  <dialog id="results-dialog" class="modal results-modal" aria-labelledby="results-title">
+    <div class="modal-heading"><div><p class="eyebrow">EXPERIMENT RESULTS</p><h2 id="results-title" tabindex="-1">运行结果与评估</h2></div><button id="close-results" type="button" class="icon-button" aria-label="关闭运行结果">×</button></div>
+    <div class="result-version-bar"><label for="result-version-select">查看方案<select id="result-version-select" aria-describedby="result-view-note"></select></label><button id="return-current-results" type="button" class="button" hidden>返回当前方案</button></div>
+    <p id="result-view-note" class="small muted"></p>
+    <p id="result-status" class="result-status">运行预览后，查看当前方案的指标与完整评估。</p>
+    <div id="result-cards" class="result-cards"></div>
+    <section id="result-evaluation" class="result-evaluation" aria-label="方案分析"></section>
+    <section id="result-version-details" class="result-version-details" aria-label="版本信息与完整模型"></section>
+      <section class="panel history-panel"><div class="panel-title"><div><span class="section-number">03</span><h2>方案版本与对比</h2></div><button id="run-study" class="button" disabled>评估当前方案 <span aria-hidden="true">↗</span></button></div><p class="history-description">多次独立仿真，比较均值与置信区间。未评估的版本保留完整修改记录。</p><div id="study-summary" class="study-summary" hidden></div><div class="table-scroll"><table id="version-table"><thead><tr><th>方案 / 修改记录</th><th>产出率 <small>件/h</small></th><th>平均在制品 <small>件</small></th><th>单位能耗 <small>kWh/件</small></th><th><span class="sr-only">操作</span></th></tr></thead><tbody id="version-rows"></tbody></table></div><div class="model-footnote"><span aria-hidden="true">ⓘ</span><span>原料按需补给；在制品包含设备与中间缓冲区，不含原料和成品。<button id="show-assumptions" class="text-button">模型说明</button></span></div></section>
+    <div class="modal-actions"><button id="download-report" type="button" class="button primary">导出结果报告 <span aria-hidden="true">↗</span></button></div>
+  </dialog>
+  <dialog id="equipment-dialog" class="modal equipment-modal" aria-labelledby="equipment-title">
+    <form id="equipment-form">
+      <div class="modal-heading"><div><p class="eyebrow">EXTEND PRODUCTION LINE</p><h2 id="equipment-title">添加设备与配套容器</h2></div><button type="button" class="icon-button close-dialog" aria-label="关闭添加窗口">×</button></div>
+      <p class="small muted topology-description">每新增一台设备，配套一个缓冲容器。确认后切换到自定义实验；点击“应用修改并预览”才会保存新方案并运行。</p>
+      <label class="field">插入位置<select id="equipment-position" required></select></label>
+      <h3 class="topology-section-title">加工设备</h3>
+      <div class="field-grid">
+        <label class="field topology-wide">设备名称<input id="equipment-name" maxlength="80" required autocomplete="off"></label>
+        <label class="field">加工时间 / s<input id="equipment-cycle" type="number" min="1" step="any" required></label>
+        <label class="field">可用率 / %<input id="equipment-availability" type="number" min="0.001" max="100" step="any" required></label>
+        <label class="field">平均维修时间 / s<input id="equipment-mttr" type="number" min="0" step="any" required></label>
+        <label class="field">空闲功率 / kW<input id="equipment-idle" type="number" min="0" max="1000000000" step="any" required></label>
+        <label class="field">加工功率 / kW<input id="equipment-processing" type="number" min="0" max="1000000000" step="any" required></label>
+      </div>
+      <p class="small muted topology-defaults">设备参数预填自产线末台设备，请根据实际设备修改。</p>
+      <h3 class="topology-section-title">缓冲容器</h3>
+      <div class="field-grid">
+        <label class="field topology-wide">容器名称<input id="container-name" maxlength="80" required autocomplete="off"></label>
+        <label class="field">容量 / 件<input id="container-capacity" type="number" min="1" max="10000" step="1" value="5" required></label>
+        <label class="field">转运时间 / s<input id="container-delay" type="number" min="0" step="any" value="10" required></label>
+      </div>
+      <p id="equipment-link-preview" class="topology-link-preview"></p>
+      <div id="equipment-error" class="notice error" role="alert" hidden></div>
+      <div class="modal-actions"><button type="button" class="button close-dialog">取消</button><button id="confirm-equipment" type="submit" class="button primary">添加到输入模型</button></div>
+    </form>
+  </dialog>
+  <dialog id="remove-equipment-dialog" class="modal" aria-labelledby="remove-equipment-title">
+    <div class="modal-heading"><h2 id="remove-equipment-title">移除设备与配套容器</h2><button type="button" class="icon-button close-dialog" aria-label="关闭移除窗口">×</button></div>
+    <p id="remove-equipment-description" class="topology-description"></p>
+    <div id="remove-equipment-error" class="notice error" role="alert" hidden></div>
+    <div class="modal-actions"><button type="button" class="button close-dialog">取消</button><button id="confirm-remove-equipment" type="button" class="button primary">从输入模型移除</button></div>
+  </dialog>
+  <input id="config-file" type="file" accept=".json,application/json" hidden>
+  <dialog id="settings-dialog" class="modal ai-settings-modal" aria-labelledby="ai-settings-title">
+    <form id="settings-form">
+      <div class="modal-heading"><div><p class="eyebrow">API &amp; AI MODELS</p><h2 id="ai-settings-title">模型接入</h2></div><button type="button" class="icon-button close-dialog" aria-label="关闭">×</button></div>
+      <p class="muted ai-settings-intro">为不同 API 服务和 AI 模型分别保存配置，随时切换。正在执行的调整仍使用发送时的模型。</p>
+      <section class="ai-profile-manager" aria-label="连接配置管理">
+        <label class="field">编辑连接配置<select id="ai-profile-edit-select" aria-label="编辑连接配置"></select></label>
+        <div class="ai-profile-tools"><button id="new-ai-profile" type="button" class="button">＋ 新建</button><button id="copy-ai-profile" type="button" class="button">复制配置</button><button id="delete-ai-profile" type="button" class="text-button danger-text">删除</button></div>
+        <div class="ai-edit-status-row"><span id="ai-edit-status" class="small muted"></span><button id="activate-ai-profile" type="button" class="text-button" hidden>启用已保存配置</button></div>
+      </section>
+      <div class="ai-settings-grid">
+        <label class="field">配置名称<input id="ai-profile-name" maxlength="60" placeholder="例如：日常优化 · DeepSeek" required autocomplete="off"></label>
+        <label class="field">快捷填写服务<select id="ai-service-preset"><option value="">选择服务模板（可选）</option><option value="openai">OpenAI · ChatGPT 系列模型</option><option value="deepseek">DeepSeek Flash（推荐）</option><option value="deepseek-v4-flash">DeepSeek V4 Flash（兼容名称）</option><option value="custom">自定义兼容服务</option></select></label>
+        <label class="field ai-wide-field">API Base URL<input id="ai-base-url" type="url" placeholder="留空使用 https://api.openai.com/v1" autocomplete="off"></label>
+        <label class="field">AI 模型名称<input id="ai-model" maxlength="160" placeholder="例如：gpt-4.1-mini / deepseek-flash" required autocomplete="off"></label>
+        <label class="field">接口协议<select id="ai-format"><option value="auto">自动选择</option><option value="responses">Responses</option><option value="chat_completions">Chat Completions</option></select></label>
+        <div class="field ai-wide-field"><label for="ai-api-key">API Key</label><div class="ai-key-input"><input id="ai-api-key" type="password" placeholder="输入该 API 服务的密钥" autocomplete="new-password" spellcheck="false"><button id="toggle-ai-key" class="button" type="button" aria-controls="ai-api-key" aria-pressed="false">显示</button></div></div>
+      </div>
+      <div class="ai-key-row"><p id="ai-key-state" class="small muted"></p><label class="ai-clear-key"><input id="ai-clear-key" type="checkbox">移除此配置密钥</label></div>
+      <div class="ai-key-storage"><label><input id="ai-remember-key" type="checkbox" aria-describedby="ai-key-storage-note">在本机加密保存密钥</label><p id="ai-key-storage-note" class="small muted">默认仅本次运行使用。勾选后由当前 Windows 账户保护，重启软件可继续使用。</p></div>
+      <p class="small muted ai-settings-note">填写 API 地址和服务商提供的模型标识，不是聊天网页地址。提示词、当前模型与指标会发送至所选服务。已配置的密钥会自动回填并遮挡，不会加入实验导出包。</p>
+      <p class="small muted ai-settings-note">DeepSeek 推荐模型名为 deepseek-flash。deepseek-v4-flash 仍可使用，目前由官方转至 V4.1-Flash。选择上方模板可自动填写地址、模型与协议。</p>
+      <p class="small muted ai-settings-note">DeepSeek 官方接口的参数调整使用非思考模式，以便及时返回修改方案。方案仍需经过参数校验和仿真评估。</p>
+      <div id="settings-error" class="notice error" role="alert" hidden></div>
+      <div class="modal-actions"><button type="button" class="button close-dialog">关闭</button><button id="save-ai-settings" class="button primary" type="submit">保存并启用</button></div>
+    </form>
+  </dialog>
+  <dialog id="breaks-dialog" class="modal"><form id="breaks-form"><div class="modal-heading"><h2>每周停产时段</h2><button type="button" class="icon-button close-dialog" aria-label="关闭">×</button></div><p class="muted">每周一 00:00 为时间起点。结束时间须晚于开始时间；跨周时段请拆为两段。</p><div id="break-rows"></div><button id="add-break" type="button" class="text-button">＋ 添加停产时段</button><div id="breaks-error" class="notice error" role="alert" hidden></div><div class="modal-actions"><button type="button" class="button close-dialog">取消</button><button type="submit" class="button primary">保存时段</button></div></form></dialog>
+  <dialog id="info-dialog" class="modal wide-modal"><div class="modal-heading"><h2 id="info-title">模型说明</h2><button type="button" class="icon-button close-dialog" aria-label="关闭">×</button></div><div id="info-body"></div><div class="modal-actions"><button type="button" class="button primary close-dialog">知道了</button></div></dialog>
+  <div id="toast" class="toast" role="status" hidden></div>
+</body>
+</html>

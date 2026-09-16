@@ -1,3 +1,8 @@
+"""KPI 采集与指标目录。
+
+KPICollector 在仿真过程中累计时间面积积分（排队/忙碌），结束后一次性结算
+系统级与工位级指标；指标目录向聚合层和 AI 分析层解释每个指标的语义与优劣方向。
+"""
 from __future__ import annotations
 
 import math
@@ -7,6 +12,8 @@ from typing import Any
 
 
 def percentile(values: list[float], probability: float) -> float | None:
+    """线性插值分位数；空列表返回 None。"""
+
     if not values:
         return None
     ordered = sorted(values)
@@ -22,6 +29,8 @@ def percentile(values: list[float], probability: float) -> float | None:
 
 
 def mean_or_none(values: list[float]) -> float | None:
+    """空列表返回 None 的均值。"""
+
     return sum(values) / len(values) if values else None
 
 
@@ -160,6 +169,12 @@ def build_metric_catalog(station_names: list[str]) -> list[dict[str, str]]:
 
 @dataclass
 class KPICollector:
+    """仿真过程中增量累计原始观测，finalize 时一次性结算全部 KPI。
+
+    队列长度与利用率都基于"时间面积积分"：累计每次进入/离开事件与统计窗口
+    的重叠时长，避免按离散时刻采样带来的偏差；预热期内的观测不计入统计。
+    """
+
     warmup: float
     until: float
     station_capacities: dict[str, int]
@@ -180,12 +195,17 @@ class KPICollector:
 
     @property
     def window(self) -> float:
+        """统计窗口长度（until - warmup）。"""
+
         return self.until - self.warmup
 
     def _overlap(self, start: float, end: float) -> float:
+        # 区间与统计窗口的重叠长度；所有面积积分都裁剪到窗口内。
         return max(0.0, min(end, self.until) - max(start, self.warmup))
 
     def arrival(self, customer_id: int, now: float) -> None:
+        """登记实体到达；统计窗口内的到达计入窗口计数。"""
+
         self.arrivals_total += 1
         if self.warmup <= now < self.until:
             self.arrivals_window += 1
@@ -193,9 +213,13 @@ class KPICollector:
         self.active_customers.add(customer_id)
 
     def queue_enter(self, customer_id: int, station: str, now: float) -> None:
+        """记录实体进入工位队列的时刻，供服务开始时计算等待时长。"""
+
         self.open_queues[(customer_id, station)] = now
 
     def service_start(self, customer_id: int, station: str, now: float) -> None:
+        """服务开始：结算本次排队等待，并累计该工位的队长时间面积。"""
+
         queue_start = self.open_queues.pop((customer_id, station))
         self.queue_area[station] += self._overlap(queue_start, now)
         self.customer_total_waits[customer_id] += now - queue_start
@@ -203,9 +227,13 @@ class KPICollector:
             self.waits[station].append(now - queue_start)
 
     def service_interval(self, station: str, start: float, end: float) -> None:
+        """累计某工位忙碌区间与统计窗口重叠的时间面积。"""
+
         self.busy_area[station] += self._overlap(start, end)
 
     def completion(self, customer_id: int, now: float) -> None:
+        """登记实体完成；窗口内到达且窗口内完成的进入 cohort 统计。"""
+
         self.completions_total += 1
         if self.warmup <= now < self.until:
             self.completions_window += 1
@@ -217,6 +245,8 @@ class KPICollector:
         self.active_customers.discard(customer_id)
 
     def finalize(self) -> dict[str, Any]:
+        """结算全部指标：工位利用率/队长/等待时间，以及系统级 KPI 与服务水平。"""
+
         pending_by_station: dict[str, float] = defaultdict(float)
         for (_, station), queue_start in self.open_queues.items():
             pending_by_station[station] += self._overlap(queue_start, self.until)
