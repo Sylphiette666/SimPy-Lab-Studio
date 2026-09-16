@@ -11,7 +11,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE_DIRS = {"src", "tests", "tools", "docs", "examples", "installer", ".github"}
 ROOT_FILES = {".gitignore", ".gitattributes", "AGENTS.md", "README.md", "LICENSE",
-              "pyproject.toml", "desktop_entry.py", "desktop.spec", "start_studio.cmd", "优化.md"}
+              "pyproject.toml", "desktop_entry.py", "desktop.spec", "start_studio.cmd", "优化.md",
+              "Dockerfile", "Makefile", ".env.example"}
 
 
 def main():
@@ -23,7 +24,7 @@ def main():
         path = Path(name)
         if path.parts[0] not in SOURCE_DIRS and name not in ROOT_FILES:
             continue
-        if path.suffix.lower() in {".exe", ".zip", ".pyc"} or ".env" in path.name:
+        if path.suffix.lower() in {".exe", ".zip", ".pyc"} or (".env" in path.name and path.name != ".env.example"):
             continue
         if (ROOT / path).is_file():
             files.append(name)
@@ -40,8 +41,8 @@ def main():
         archive.writestr(prefix + "SOURCE_MANIFEST.json",
                          json.dumps(manifest, indent=2, ensure_ascii=False))
         archive.writestr(prefix + "SOURCE_GUIDE.zh-CN.md", (
-            "# 滚动测试版源码\n\n本包包含未正式发布的可靠性及模型接入窗口更新，请先阅读 "
-            "docs/reliability-update.md 和 docs/model-settings-update.md。"
+            "# 滚动测试版源码\n\n本包包含未正式发布的实验管理、统计诊断、可靠性及模型接入更新，请先阅读 "
+            "docs/productivity-update.md、docs/reliability-update.md 和 docs/model-settings-update.md。"
             "来源为 manifest 中基线提交加当前工作区修改。\n\n"
             "使用 Python 3.11+：`python -m pip install -e \".[desktop,dev]\"`，"
             "然后 `python desktop_entry.py --data-dir outputs/test-data`。\n"

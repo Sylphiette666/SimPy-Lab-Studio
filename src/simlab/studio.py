@@ -388,6 +388,7 @@ def create_studio_app(
     *,
     output_root: str | Path = "outputs/studio",
     agent_factory: Callable[[AISettings], Any] | None = None,
+    connection_probe: Callable[[AISettings], dict] | None = None,
 ) -> FastAPI:
     """Create a local application with optional Windows-encrypted credential storage."""
     store = _SessionStore(Path(output_root))
@@ -399,7 +400,9 @@ def create_studio_app(
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
+        extensions.start()
         yield
+        extensions.close()
         adjustments.close()
         executor.shutdown(wait=False, cancel_futures=True)
 
@@ -436,7 +439,8 @@ def create_studio_app(
             ) == "cross-site":
                 return JSONResponse({"detail": "不允许跨站修改本机仿真。"}, status_code=403)
             length = request.headers.get("content-length", "0")
-            if not length.isdigit() or int(length) > 2_000_000:
+            limit = 35_000_000 if request.url.path == ROOT + "/restore" else 2_000_000
+            if not length.isdigit() or int(length) > limit:
                 return JSONResponse({"detail": "请求内容过大。"}, status_code=413)
         response = await call_next(request)
         response.headers["X-Content-Type-Options"] = "nosniff"
@@ -529,7 +533,9 @@ def create_studio_app(
                     {
                         "id": s["id"],
                         "created_at": s["created_at"],
-                        "name": store.version(s, s["active_version_id"])["config"]["name"],
+                        "name": s.get("display_name")
+                        or store.version(s, s["active_version_id"])["config"]["name"],
+                        "tags": s.get("tags", []), "archived": s.get("archived", False),
                     }
                     for s in sorted(
                         store.sessions.values(), key=lambda item: item["created_at"], reverse=True
@@ -841,6 +847,10 @@ def create_studio_app(
             },
         )
 
+    from simlab.studio_extensions import install
+
+    extensions = install(app, store, profiles, _validate, _differences, _csv, connection_probe)
+    app.state.extensions = extensions
     static = Path(__file__).parent / "static" / "studio"
     if static.is_dir():
         app.mount("/static", StaticFiles(directory=static), name="static")

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import base64
 import ctypes
 import json
 import logging
@@ -13,6 +14,7 @@ import socket
 import sys
 import threading
 import time
+import uuid
 from pathlib import Path
 
 APP_NAME = "SimPy Lab Studio"
@@ -228,7 +230,9 @@ def _self_test(folder: Path, report: Path) -> int:
 
         bootstrap = request("/api/studio/bootstrap")
         for asset in ("/", "/static/app.js", "/static/style.css", "/static/app.ico",
-                      "/static/adjustments.js", "/static/drafts.js", "/static/visual-editor.js"):
+                      "/static/adjustments.js", "/static/drafts.js", "/static/visual-editor.js",
+                      "/static/durable-storage.js", "/static/productivity.js",
+                      "/static/productivity.css"):
             with urllib.request.urlopen(url + asset, timeout=10) as response:
                 assert response.status == 200 and response.read()
         config = bootstrap["template"]
@@ -245,6 +249,28 @@ def _self_test(folder: Path, report: Path) -> int:
         assert run["status"] == "succeeded", run.get("error")
         assert run["result"]["frames"]
         checks = ["embedded assets", "server startup", "real SimPy preview"]
+        draft = request(root + "/drafts/input", {"value": '{"prompt":"self-test draft"}',
+                                                "revision": 0}, method="PUT")
+        assert draft["revision"] == 1
+        request("/api/studio/workspace", {"last_session_id": session["id"]}, method="PUT")
+        batch = request(root + "/batches", {
+            "request_id": str(uuid.uuid4()), "expected_version_id": session["active_version_id"],
+            "grid": {"machines.0.cycle_time_seconds": [320]}, "targets": {},
+        })
+        deadline = time.monotonic() + 40
+        while batch["status"] in {"queued", "running"} and time.monotonic() < deadline:
+            time.sleep(0.15)
+            batch = request(root + "/batches/" + batch["id"])
+        assert batch["status"] == "succeeded"
+        backup = request("/api/studio/backups", {}, method="POST")
+        with urllib.request.urlopen(url + "/api/studio/backups/" + backup["name"],
+                                    timeout=15) as response:
+            encoded = base64.b64encode(response.read()).decode()
+        restored = request("/api/studio/restore", {"data": encoded, "apply": True})
+        restored_root = "/api/studio/sessions/" + restored["session_ids"][0]
+        assert request(restored_root + "/drafts")["input"]["value"]
+        assert request(restored_root + "/batches")[0]["status"] == "succeeded"
+        checks.extend(["durable input draft", "real parameter scan", "backup and isolated restore"])
         if sys.platform == "win32":
             import secrets
 
@@ -262,6 +288,7 @@ def _self_test(folder: Path, report: Path) -> int:
             server.close()
             server = DesktopServer(folder)
             url = server.start()
+            assert request(root + "/drafts")["input"]["value"]
             loaded = next(item for item in request(profiles_route)["profiles"]
                           if item["id"] == profile_id)
             assert loaded["has_key"] and loaded["remember_key"] and not loaded["key_storage_error"]
@@ -355,7 +382,7 @@ def main(argv: list[str] | None = None) -> int:
             "1. 左侧编辑设备、缓冲区和班次，应用修改后预览。\n"
             "2. 播放、暂停或拖动时间轴，观察加工、堵塞和故障。\n"
             "3. 在“模型接入”保存 API 地址、模型和密钥，右侧随时切换。\n"
-            "4. 输入自然语言目标，校验通过后生成新版本并重新仿真。\n"
+            "4. 输入自然语言目标，确认调整方案后生成新版本并重新仿真。\n"
             "5. 执行统计评估比较方案，再导出实验包。\n\n"
             "API 密钥默认仅本次运行有效；可在模型接入中选择本机加密保存。\n"
             "关闭窗口会停止后台服务，未完成的任务下次需重新运行。\n"

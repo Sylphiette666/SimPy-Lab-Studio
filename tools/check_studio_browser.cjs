@@ -19,6 +19,8 @@ const path = require('node:path');
   try {
     await page.goto(url, { waitUntil: 'networkidle' });
     await page.waitForFunction(() => document.querySelector('#model-name')?.value);
+    await page.locator('#new-session').click();
+    await page.waitForFunction(() => !document.querySelector('#apply-model').disabled);
     assert.equal(await page.locator('#production-line').count(), 1);
     if (await page.locator('#edit-model').count()) await page.locator('#edit-model').click();
     await page.locator('#until-days').fill('0.05');

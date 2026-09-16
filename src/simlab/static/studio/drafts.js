@@ -16,7 +16,7 @@
         const data = {version: state.session.active_version_id, prompt: $("prompt").value, dirty: state.dirty};
         if (state.dirty) Object.assign(data, {config: state.draft, breaks: state.breaks,
           values: Object.fromEntries(inputs().map(input => [input.id, input.value]))});
-        localStorage.setItem(key(), JSON.stringify(data));
+        window.StudioStorage.setItem(key(), JSON.stringify(data));
       }
     } catch { text("save-status", "草稿暂不能保存到本机，请及时保存模型。"); }
   }
@@ -35,7 +35,7 @@
   function recover() {
     conflict = null; banner.hidden = true;
     try {
-      const saved = JSON.parse(localStorage.getItem(key()) || "null");
+      const saved = JSON.parse(window.StudioStorage.getItem(key()) || "null");
       $("prompt").value = "";
       if (!saved) return;
       if (saved.dirty && saved.version !== state.session.active_version_id) {
@@ -47,7 +47,7 @@
   }
   function clear() {
     if (!state.session) return;
-    try { localStorage.removeItem(key()); } catch { /* Save reports storage errors. */ }
+    try { window.StudioStorage.removeItem(key()); } catch { /* Save reports storage errors. */ }
     conflict = null; banner.hidden = true;
   }
   restore.addEventListener("click", () => {

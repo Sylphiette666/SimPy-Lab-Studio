@@ -110,7 +110,7 @@ function action(fn, errorId = "global-error") {
 }
 function bind(id, event, fn, errorId) { $(id).addEventListener(event, action(fn, errorId)); }
 function persistSession() {
-  try { localStorage.setItem(SESSION_KEY, state.session.id); } catch { /* Browser storage may be disabled. */ }
+  window.StudioStorage.setItem(SESSION_KEY, state.session.id);
 }
 function hasPending(kind) {
   if (state.startingRuns.has(`${state.session?.id}/${state.session?.active_version_id}/${kind}`)) return true;
@@ -127,6 +127,9 @@ function updateControls() {
   $("import-config").disabled = unavailable;
   $("edit-breaks").disabled = unavailable;
   if ($("open-experiments")) $("open-experiments").disabled = unavailable;
+  for (const id of ["open-batch-experiments", "import-parameter-table", "open-diagnostics"]) {
+    if ($(id)) $(id).disabled = unavailable;
+  }
   document.querySelectorAll("#model-body input, #model-body select").forEach((input) => {
     const paperCapacity = $("model-mode").value === "paper" &&
       ((input.id.startsWith("buffer-") && input.id.endsWith("-capacity")) || input.dataset.paperLocked === "true");
@@ -138,7 +141,7 @@ function updateControls() {
   $("adjust-progress").hidden = !state.adjusting || state.adjustmentStatus === "ready";
   for (const button of document.querySelectorAll(".version-restore")) button.disabled = unavailable;
   text("apply-model", state.dirty ? "应用修改并预览 →" : "保存模型并预览 →");
-  text("save-status", state.dirty ? "有未应用的模型修改" : "模型与结果保存在本机");
+  text("save-status", window.StudioStorage?.statusMessage() || (state.dirty ? "有未应用的模型修改" : "模型与结果保存在本机"));
   window.StudioWorkspace?.sync();
   window.StudioTopology?.sync();
   window.StudioVisualEditor?.sync();
@@ -164,7 +167,7 @@ function renderAI() {
   text("ai-profile-caption", state.requestAI
     ? `本轮：${state.requestAI.model}；切换将在下一条提示词生效。`
     : "可随时切换，下一条提示词使用所选模型。");
-  text("ai-hint", ai.available ? `${ai.model} · 修改通过校验后自动预览` : "在“模型接入”中填写该服务的密钥；手动仿真可直接使用。");
+  text("ai-hint", ai.available ? `${ai.model} · 方案确认后应用并预览` : "在“模型接入”中填写该服务的密钥；手动仿真可直接使用。");
   updateControls();
 }
 
@@ -918,6 +921,7 @@ function showAssumptions() {
   openInfo("模型说明与统计口径", [list]);
 }
 async function openExperiments() {
+  if (window.StudioProductivity) return window.StudioProductivity.experiments();
   const data = await api("/sessions");
   const list = node("div", "saved-experiments");
   for (const session of data.sessions || []) {
@@ -1003,7 +1007,8 @@ async function initialize() {
   try {
     state.bootstrap = await api("/bootstrap"); state.ai = state.bootstrap.ai; renderAI();
     acceptAIProfiles(await api("/ai/profiles"));
-    let saved; try { saved = localStorage.getItem(SESSION_KEY); } catch { saved = null; }
+    await window.StudioStorage.initialize();
+    const saved = window.StudioStorage.getItem(SESSION_KEY);
     if (saved) {
       try { acceptSession(await api(`/sessions/${saved}`)); }
       catch (error) {

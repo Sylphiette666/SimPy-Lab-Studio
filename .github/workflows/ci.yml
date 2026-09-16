@@ -32,4 +32,6 @@ jobs:
             if (!$ready) { throw 'Fixture startup failed' }
             node tools/check_reliability_browser.cjs
             if ($LASTEXITCODE -ne 0) { throw 'Reliability regression failed' }
+            node tools/check_productivity_browser.cjs
+            if ($LASTEXITCODE -ne 0) { throw 'Productivity regression failed' }
           } finally { Stop-Process -Id $fixture.Id -ErrorAction SilentlyContinue }

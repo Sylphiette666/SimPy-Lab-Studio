@@ -1,10 +1,10 @@
 # SimPy Lab Studio
 
-当前滚动测试分支已加入[可靠性更新](docs/reliability-update.md)：图形冲突及草稿恢复、AI 修改预览与显式确认、取消/超时重试、小样本提示和 CI。以下下载链接仍指向已发布的 v1.2.0 正式包；本轮测试更新尚未发布新的正式安装包。
+当前仓库为 [R-0xy/SimPy-Kpi-Lab](https://github.com/R-0xy/SimPy-Kpi-Lab)，开发与推送统一使用 `main`。当前代码包含[可靠性更新](docs/reliability-update.md)、[密钥回填与 DeepSeek 配置](docs/model-settings-update.md)，以及[九项高优先级更新](docs/productivity-update.md)：持久草稿、表格导入、参数提示、瓶颈与统计诊断、批量实验、连接测试、实验管理和备份恢复。
 
-[下载 v1.2.0 安装程序](https://github.com/Sylphiette666/SimPy-Lab-Studio/releases/download/v1.2.0/SimPy-Lab-Studio-Setup-1.2.0.exe) · [下载 v1.2.0 源码 ZIP](source-packages/SimPy-Lab-Studio-1.2.0-source.zip?raw=true) · [源码包说明与校验](source-packages/README.md)
+[下载当前源码 ZIP](source-packages/SimPy-Lab-Studio-test-source.zip?raw=true) · [源码包说明与校验](source-packages/README.md) · [历史 v1.2.0 发布说明](docs/releases/v1.2.0.md)
 
-> 当前 `main` 为 **v1.2.0 正式版**，包含最新测试版已验证的功能。v1.0.0 和 v1.1.0 发布记录及文件继续保留，后续开发仍使用 `frontend/simulation-workspace`。
+> 版本基线仍为 **v1.2.0**，界面标识为“开发更新”。当前功能尚未发布新的正式安装包，历史正式包不包含后续更新。本机测试 EXE 位于 `F:\Simpy\SimPy Lab Studio 测试版\SimPy Lab Studio.exe`。
 
 本版新增 **图形建模**（拖放设备与容器、端口连线、参数编辑、撤销/重做）、**运行助手对话工具**（搜索、复制、导出及表格/代码/公式离线显示）、**可选的本机密钥加密保存**，以及**历史方案完整评估详情**。对应改进名单第 1、4、6 项，保留原有仿真、AI 调整和评估功能。见 [v1.2.0 发布说明](docs/releases/v1.2.0.md)、[图形建模说明](docs/visual-model-editor.md)、[对话工具](docs/conversation-tools.md) 与 [密钥保存](docs/credential-storage.md)。
 
@@ -16,7 +16,7 @@
 
 ## 下载与启动
 
-推荐分享 [v1.2.0 Release](https://github.com/Sylphiette666/SimPy-Lab-Studio/releases/tag/v1.2.0) 中的 **`SimPy-Lab-Studio-Setup-1.2.0.exe`**。双击进入中文安装向导，选择位置和快捷方式即可完成安装。安装程序会检测 WebView2，缺失时使用微软官方程序联网安装；电脑已有 WebView2 时可以离线安装。
+当前开发更新可使用本机测试 EXE，或按下方步骤从当前源码运行和构建。[原仓库的 v1.2.0 Release](https://github.com/Sylphiette666/SimPy-Lab-Studio/releases/tag/v1.2.0) 是历史安装包入口，保留用于回溯旧版本。历史安装程序会检测 WebView2，缺失时使用微软官方程序联网安装；电脑已有 WebView2 时可以离线安装。
 
 已安装旧版的用户，先退出软件再运行新版安装程序，可覆盖更新并保留实验数据。第一版安装程序和便携包仍可从 v1.0.0 发布记录下载。版本变化见 [v1.2.0 发布说明](docs/releases/v1.2.0.md)。
 
@@ -49,7 +49,7 @@ API 密钥默认仅本次运行使用。v1.2.0 起在“模型接入”提供可
 1. 打开应用，可点击“图形建模”拖放设备与容器并建立串联连接，也可点击“编辑模型”或左侧“模型”修改初始输入；所有机器、缓冲区、班次和实验设置都在输入模型窗口中。点击窗口外的遮罩即可返回主界面，再次打开时保留当前草稿；仍需点击“应用修改并预览”才会保存并运行。
 2. 点击“应用修改并预览”，或关闭编辑窗口后点击“运行预览”，进入全屏工作区。中央观察生产线，右侧查看动态指标，底部可暂停、重播、拖动进度和变速。
 3. 需要 AI 调整时，在“模型接入”填写服务提供商的 API Base URL、模型和密钥并启用；右侧可随时切换配置。
-4. 在运行助手输入目标，例如“保持缓冲容量不变，将第一台设备的可用率提高至 90%”。打字和切换模型不会暂停；点击发送或按 Ctrl+Enter 后暂停，校验成功的新版本自动重新运行。请求失败时，原回放仍可手动继续。
+4. 在运行助手输入目标，例如“保持缓冲容量不变，将第一台设备的可用率提高至 90%”。打字和切换模型不会暂停；发送后暂停回放，检查修改预览并点击“确认应用并预览”后才创建版本。请求失败时，原回放仍可手动继续。
 5. 回放自然结束后自动计算完整评估，完成后点击“查看最终结果”；也可随时通过“评估”入口手动评估当前方案。查看最终指标、修改记录与条件一致的历史对照，导出结果报告或完整实验。
 
 ![最终方案与运行评估](docs/images/workspace-results.png)
@@ -58,7 +58,7 @@ API 密钥默认仅本次运行使用。v1.2.0 起在“模型接入”提供可
 
 模型和评估窗口均支持点击窗口外关闭，也保留关闭按钮和 Esc。窗口内点击、滚动及从内部拖动到外部不会触发关闭；关闭评估窗口不影响正在计算的任务。
 
-本机保留第一版及一个持续覆盖更新的工作版本，不再按功能另建软件目录。正式发布在 `main` 和带版本号的 Release 上，测试分支用于后续迭代。第一版文件、用户实验及模型连接列表不会因发布而删除，Git 历史可追溯各次修改。
+本机保留第一版及一个持续覆盖更新的工作版本，不按功能另建目录或分支；后续迭代直接更新本仓库 `main`。只有另行发布带版本号的 Release 才代表新的正式发行。用户实验及模型连接列表会保留，Git 历史可追溯各次修改。
 
 软件“帮助”菜单内也有使用说明、软件信息和组件许可。完整说明见 [桌面版使用说明](docs/desktop.md) 与 [模型和仿真说明](docs/studio.md)。
 
@@ -92,4 +92,4 @@ python -m venv .venv
 
 改版的浏览器交互验证使用 `tools/check_workspace_browser.cjs`，覆盖布局、播放与暂停、发送时调整、完整评估、导出及原功能入口；测试服务注入固定 AI 响应，不调用付费 API。启动方法见 [改版验证说明](docs/workspace-redesign.md#开发运行与验证)。
 
-本仓库是 [SimPy KPI Lab](https://github.com/Sylphiette666/SimPy-Kpi-Lab) 的独立桌面发行项目，保留底层仿真与测试代码，按 MIT 许可发布。
+本仓库整合原 SimPy KPI Lab 与 SimPy Lab Studio 的历史，保留底层仿真、测试代码与原有许可，按 MIT 许可发布。

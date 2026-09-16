@@ -5,6 +5,8 @@ This entry point is separate from the real Studio and never contacts a provider.
 """
 from __future__ import annotations
 
+import os
+
 import uvicorn
 
 from simlab.studio import create_studio_app
@@ -22,8 +24,12 @@ class BrowserTestAgent:
 
 def fixture_app():
     application = create_studio_app(
-        output_root="outputs/studio_qa/ai_sessions",
+        output_root=os.getenv("SIMLAB_BROWSER_FIXTURE_ROOT", "outputs/studio_qa/ai_sessions"),
         agent_factory=lambda settings: BrowserTestAgent(),
+        connection_probe=lambda settings: {
+            "ok": True, "category": "success", "message": "隔离测试连接成功。",
+            "latency_ms": 1, "total_tokens": 2,
+        },
     )
 
     @application.get("/fixture-health")

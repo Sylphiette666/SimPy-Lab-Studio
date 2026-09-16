@@ -1,0 +1,104 @@
+/* Isolated fixture only: real simulations, fake connection probe, no provider requests. */
+const {chromium} = require('playwright');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+(async () => {
+  const url = process.env.STUDIO_TEST_URL;
+  if (!url) throw new Error('Set STUDIO_TEST_URL to an isolated fixture.');
+  const out = path.resolve(__dirname, '../outputs/productivity-qa'); fs.mkdirSync(out, {recursive:true});
+  const browser = await chromium.launch({channel: process.env.PLAYWRIGHT_CHANNEL || 'msedge', headless:true});
+  const page = await browser.newPage({viewport:{width:1440,height:980},acceptDownloads:true});
+  const errors=[], checks=[];
+  page.on('pageerror', e => errors.push(e.message));
+  async function close(id) { await page.locator(`#${id} .modal-heading button`).click(); }
+  async function waitReady() { await page.waitForFunction(() => !document.querySelector('#apply-model').disabled && document.querySelector('#model-name').value); }
+  try {
+    assert.equal((await (await page.request.get(url+'/fixture-health')).json()).injected_test_agent,true);
+    await page.goto(url,{waitUntil:'domcontentloaded'}); await waitReady();
+    await page.locator('#new-session').click(); await waitReady();
+    await page.locator('#edit-model').click();
+    await page.locator('#until-days').fill('0.03'); await page.locator('#warmup-days').fill('0.003'); await page.locator('#replications').fill('3');
+    await page.locator('#machine-0-availability').fill('90'); await page.locator('#machine-0-mttr_seconds').fill('0');
+    assert.equal(await page.locator('#machine-0-mttr_seconds').getAttribute('aria-invalid'),'true');
+    await page.locator('#machine-0-mttr_seconds').fill('60');
+    assert.equal(await page.locator('#parameter-issues').isHidden(),true);
+    let interrupted = false;
+    await page.route('**/drafts/input', async route => {
+      if (!interrupted && route.request().method() === 'PUT') { interrupted = true; await route.abort('failed'); }
+      else await route.continue();
+    });
+    await page.locator('#machine-0-cycle_time_seconds').fill('80');
+    const sid = await page.evaluate(() => state.session.id);
+    await page.waitForFunction(async sid => { const d=await (await fetch(`/api/studio/sessions/${sid}/drafts`)).json(); return d.input?.value?.includes('80'); },sid);
+    assert.equal(interrupted, true);
+    await page.waitForFunction(() => !window.StudioStorage.statusMessage());
+    await page.unroute('**/drafts/input');
+    checks.push('Interrupted draft request retried without requiring further edits.');
+    await page.evaluate(() => localStorage.clear());
+    await page.reload({waitUntil:'domcontentloaded'}); await waitReady();
+    await page.locator('#edit-model').click();
+    assert.equal(await page.locator('#machine-0-cycle_time_seconds').inputValue(),'80');
+    assert.equal(await page.locator('#until-days').inputValue(),'0.03');
+    checks.push('Draft restored after browser storage cleared; coupled validation points to field.');
+    await page.locator('#import-parameter-table').click();
+    await page.locator('#parameter-table-file').setInputFiles({name:'parameters.csv',mimeType:'text/csv',buffer:Buffer.from('对象类型,序号,加工时间(s),可用率(%),平均维修时间(s)\n设备,1,75,85,90\n')});
+    await page.locator('#preview-table-import').click();
+    await page.locator('#apply-table-import').click();
+    assert.equal(await page.locator('#machine-0-cycle_time_seconds').inputValue(),'75');
+    assert.equal(await page.locator('#machine-0-availability').inputValue(),'85');
+    await page.locator('#apply-model').click();
+    await page.waitForFunction(() => document.querySelector('#seek').max !== '0' && !document.querySelector('#run-preview').disabled);
+    if(await page.locator('#workspace-exit').isVisible()) await page.locator('#workspace-exit').click();
+    checks.push('CSV mapped, previewed and explicitly applied through normal version workflow.');
+    await page.locator('#ai-settings').click();
+    await page.waitForFunction(() => !document.querySelector('#save-ai-settings').disabled);
+    await page.locator('#ai-model').fill('fixture-model'); await page.locator('#ai-api-key').fill('fixture-connection-key');
+    await page.locator('#test-ai-connection').click();
+    assert.match(await page.locator('#connection-test-result').textContent(),/隔离测试连接成功/);
+    await page.locator('#settings-dialog .close-dialog').first().click();
+    checks.push('Connection test uses unsaved editor values and returns a clear result.');
+    await page.locator('#open-batch-experiments').click();
+    await page.locator('#batch-dialog .tool-grid').first().locator('input').fill('60,80');
+    await page.locator('#start-batch-experiment').click();
+    await page.waitForFunction(() => [...document.querySelectorAll('#batch-dialog p')].some(p => p.textContent.includes('已完成 · 6/6')));
+    assert.equal(await page.locator('#batch-dialog tbody tr').count(),2);
+    assert.match(await page.locator('#batch-job-select option:checked').textContent(), /已完成/);
+    await page.screenshot({path:path.join(out,'batch-desktop.png')});
+    const exportWait=page.waitForEvent('download'); await page.getByRole('button',{name:'导出结果 CSV',exact:true}).click(); await (await exportWait).saveAs(path.join(out,'batch.csv'));
+    await close('batch-dialog');
+    checks.push('Two parameter scenarios finish, persist and export without modifying current version.');
+    const active = await (await page.request.get(`${url}/api/studio/sessions/${sid}`)).json();
+    const run = await (await page.request.post(`${url}/api/studio/sessions/${sid}/runs`,{data:{version_id:active.active_version_id,kind:'study'}})).json();
+    await page.waitForFunction(async ({sid,rid}) => (await (await fetch(`/api/studio/sessions/${sid}/runs/${rid}`)).json()).status==='succeeded',{sid,rid:run.id});
+    await page.locator('#nav-results').click(); await page.locator('#open-diagnostics').click(); await page.locator('#run-diagnostics').click();
+    await page.getByRole('heading',{name:'设备时间分解（排除预热）'}).waitFor();
+    assert.equal(await page.locator('.state-stack').count(),4); assert.equal(await page.locator('.heat-cell').count(),9);
+    await page.screenshot({path:path.join(out,'diagnostics-desktop.png')});
+    await close('analysis-dialog'); await page.locator('#close-results').click();
+    checks.push('Full-study t intervals, repeat-count advice, machine states and buffer heatmap render.');
+    await page.locator('#open-experiments').click();
+    await page.locator('#experiment-search').fill(active.versions[0].config.name);
+    const row = page.locator('#experiments-dialog .tool-table').first().locator('tbody tr').first();
+    await row.getByRole('textbox',{name:'实验名称',exact:true}).fill('浏览器验证实验');
+    await row.getByRole('textbox',{name:'实验标签',exact:true}).fill('验证,参数');
+    await row.getByRole('button',{name:'保存名称/标签',exact:true}).click();
+    await page.locator('#experiment-search').fill('浏览器验证实验');
+    await page.waitForFunction(() => document.querySelector('#experiments-dialog .tool-table tbody tr input')?.value === '浏览器验证实验');
+    await page.locator('#backup-experiments').click();
+    await page.waitForFunction(() => !document.querySelector('#backup-experiments').disabled);
+    const backup = (await (await page.request.get(url+'/api/studio/backups')).json()).items[0];
+    const raw=await (await page.request.get(url+'/api/studio/backups/'+backup.name)).body();
+    await page.locator('#restore-experiment-file').setInputFiles({name:'backup.zip',mimeType:'application/zip',buffer:raw});
+    await page.locator('#confirm-restore-experiments').click();
+    await page.getByText(/已恢复 \d+ 个实验/).waitFor();
+    await page.setViewportSize({width:960,height:680}); await page.screenshot({path:path.join(out,'experiments-960.png')});
+    assert.equal(await page.locator('#experiments-dialog').evaluate(el=>el.scrollWidth>el.clientWidth+1),false);
+    await close('experiments-dialog');
+    checks.push('Rename/tag/search, backup download and ZIP restore work at minimum desktop size.');
+    assert.deepEqual(errors,[]);
+    fs.writeFileSync(path.join(out,'checks.json'),JSON.stringify({ok:true,checks},null,2));
+    console.log(JSON.stringify({ok:true,checks}));
+  } catch(e) { await page.screenshot({path:path.join(out,'failure.png')}).catch(()=>{}); throw e; }
+  finally {await browser.close();}
+})().catch(e=>{console.error(e);process.exitCode=1;});

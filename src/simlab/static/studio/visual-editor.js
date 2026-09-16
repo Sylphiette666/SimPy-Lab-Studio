@@ -21,13 +21,13 @@
     if (!graph || !contextKey) return;
     try {
       const key = draftKey(contextKey.split("/")[0]);
-      if (graphChanged()) localStorage.setItem(key, JSON.stringify({graph, base, mode, contextKey, sourceStamp, savedGraph, undo, redo}));
-      else localStorage.removeItem(key);
+      if (graphChanged()) window.StudioStorage.setItem(key, JSON.stringify({graph, base, mode, contextKey, sourceStamp, savedGraph, undo, redo}));
+      else window.StudioStorage.removeItem(key);
     } catch { hint("图形草稿暂不能保存到本机，请及时应用或导出模型。", true); }
   }
   function recoverDraft() {
     try {
-      const saved = JSON.parse(localStorage.getItem(draftKey(state.session.id)) || "null");
+      const saved = JSON.parse(window.StudioStorage.getItem(draftKey(state.session.id)) || "null");
       if (!saved || !Array.isArray(saved.graph?.nodes) || !Array.isArray(saved.graph?.edges) || !saved.base?.machines) return false;
       ({graph, base, mode, contextKey, sourceStamp, savedGraph} = saved);
       undo = Array.isArray(saved.undo) ? saved.undo.slice(-80) : []; redo = Array.isArray(saved.redo) ? saved.redo.slice(-80) : [];
@@ -56,7 +56,7 @@
   const topologyKey = config => JSON.stringify([config.machines.map(item => item.name), config.buffers.map(item => item.name)]);
   function readLayout(config) {
     try {
-      const catalog = JSON.parse(localStorage.getItem(layoutKey()) || "[]");
+      const catalog = JSON.parse(window.StudioStorage.getItem(layoutKey()) || "[]");
       const layout = Array.isArray(catalog) && catalog.find(item => item.key === topologyKey(config));
       if (!Array.isArray(layout?.positions)) return;
       for (const item of graph.nodes) {
@@ -67,10 +67,10 @@
   }
   function storeLayout(config) {
     try {
-      const stored = JSON.parse(localStorage.getItem(layoutKey()) || "[]"), key = topologyKey(config);
+      const stored = JSON.parse(window.StudioStorage.getItem(layoutKey()) || "[]"), key = topologyKey(config);
       const positions = graph.nodes.map(item => ({type: item.type, name: String(item.data.name).trim(), x: item.x, y: item.y}));
       const catalog = Array.isArray(stored) ? stored.filter(item => item?.key !== key) : [];
-      localStorage.setItem(layoutKey(), JSON.stringify([{key, positions}, ...catalog].slice(0, 20))); return true;
+      window.StudioStorage.setItem(layoutKey(), JSON.stringify([{key, positions}, ...catalog].slice(0, 20))); return true;
     } catch { return false; }
   }
   function initialize(config) {
@@ -377,7 +377,7 @@
   });
   window.StudioVisualEditor = {sync, hasDraft: () => {
     if (graphChanged() && contextKey?.split("/")[0] === state.session?.id) return true;
-    try { return Boolean(state.session && localStorage.getItem(draftKey(state.session.id))); } catch { return false; }
+    try { return Boolean(state.session && window.StudioStorage.getItem(draftKey(state.session.id))); } catch { return false; }
   }}; sync();
   window.addEventListener("beforeunload", saveDraft);
 })();

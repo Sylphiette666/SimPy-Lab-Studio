@@ -2,6 +2,7 @@
 
 - 当前滚动测试更新：[可靠性改进与验证](reliability-update.md)。
 - 模型接入窗口：[密钥回填与 DeepSeek Flash 配置](model-settings-update.md)。
+- 当前 main 高优先级改进：[九项更新与验证范围](productivity-update.md)。
 - v1.2.0 正式版：[发布说明与验证范围](releases/v1.2.0.md)。
 - 以下保留 v1.0.0 的历史实测记录，不应作为新版已完成验证的证明。
 

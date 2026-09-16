@@ -12,7 +12,7 @@ SHA-256：`4aa55f42689e7feb89382c75d5734aa5db11d0f9c1151628e9fc0133e4db3fbb`。
 
 [测试版源码 ZIP](SimPy-Lab-Studio-test-source.zip?raw=true) · [SHA-256](SimPy-Lab-Studio-test-source.zip.sha256)
 
-对应 `frontend/simulation-workspace`，当前包含 v1.2 基线上的[可靠性更新](../docs/reliability-update.md)和[密钥回填及 DeepSeek Flash 配置更新](../docs/model-settings-update.md)。此包包含当前工作区修改，基线提交和逐文件 SHA-256 见包内清单。后续开发覆盖更新同名测试包，正式版归档保持原样。
+对应本仓库 `main`，当前包含 v1.2 基线上的[可靠性更新](../docs/reliability-update.md)、[密钥与 DeepSeek 配置更新](../docs/model-settings-update.md)和[九项高优先级更新](../docs/productivity-update.md)。此包包含打包时的工作区快照，基线提交和逐文件 SHA-256 见包内清单。后续开发覆盖更新同名测试包，历史正式版归档保持原样。
 
 ## 以往正式发布
 
