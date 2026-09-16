@@ -1,6 +1,8 @@
 # SimPy Lab Studio
 
-当前仓库为 [R-0xy/SimPy-Kpi-Lab](https://github.com/R-0xy/SimPy-Kpi-Lab)，开发与推送统一使用 `main`。当前代码包含[可靠性更新](docs/reliability-update.md)、[密钥回填与 DeepSeek 配置](docs/model-settings-update.md)，以及[九项高优先级更新](docs/productivity-update.md)：持久草稿、表格导入、参数提示、瓶颈与统计诊断、批量实验、连接测试、实验管理和备份恢复。
+当前仓库为 [R-0xy/SimPy-Kpi-Lab](https://github.com/R-0xy/SimPy-Kpi-Lab)，主分支为 `main`；当前改动及汇总文档按要求交付到 `roxy_beta`。当前代码包含[可靠性更新](docs/reliability-update.md)、[密钥回填与 DeepSeek 配置](docs/model-settings-update.md)，以及[九项高优先级更新](docs/productivity-update.md)：持久草稿、表格导入、参数提示、瓶颈与统计诊断、批量实验、连接测试、实验管理和备份恢复。
+
+**[查看 roxy_beta 完整改动汇总（相对 v1.2.0）](docs/roxy-beta-changes.md)**：包含功能对比、操作入口、使用边界、主要代码位置及验证结果。
 
 [下载当前源码 ZIP](source-packages/SimPy-Lab-Studio-test-source.zip?raw=true) · [源码包说明与校验](source-packages/README.md) · [历史 v1.2.0 发布说明](docs/releases/v1.2.0.md)
 
