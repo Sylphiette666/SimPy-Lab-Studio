@@ -16,7 +16,7 @@ import time
 from pathlib import Path
 
 APP_NAME = "SimPy Lab Studio"
-DESKTOP_VERSION = "1.2.0"
+DESKTOP_VERSION = "1.3.0"
 ASSETS = Path(__file__).parent / "static" / "studio"
 
 
@@ -226,7 +226,8 @@ def _self_test(folder: Path, report: Path) -> int:
                 return json.load(response)
 
         bootstrap = request("/api/studio/bootstrap")
-        for asset in ("/", "/static/app.js", "/static/style.css", "/static/app.ico"):
+        for asset in ("/", "/static/app.js", "/static/style.css", "/static/app.ico",
+                      "/static/studio-tools.js", "/static/studio-recovery.js", "/static/studio-tools.css"):
             with urllib.request.urlopen(url + asset, timeout=10) as response:
                 assert response.status == 200 and response.read()
         config = bootstrap["template"]
@@ -243,6 +244,25 @@ def _self_test(folder: Path, report: Path) -> int:
         assert run["status"] == "succeeded", run.get("error")
         assert run["result"]["frames"]
         checks = ["embedded assets", "server startup", "real SimPy preview"]
+        import base64
+        import io
+        from openpyxl import Workbook
+
+        workbook = Workbook()
+        workbook.active.append(["name", "cycle_time_seconds"])
+        workbook.active.append([config["machines"][0]["name"], 300])
+        stream = io.BytesIO()
+        workbook.save(stream)
+        table = request("/api/studio/tables/inspect", {
+            "filename": "self-test.xlsx", "data": base64.b64encode(stream.getvalue()).decode(),
+        })
+        assert table["rows"][0]["values"]["cycle_time_seconds"] == "300", "XLSX cell text mismatch"
+        draft = request(root + "/draft", {
+            "base_version_id": session["active_version_id"], "revision": 0, "prompt": "self-test draft",
+        }, method="PUT")
+        assert draft["revision"] == 1
+        assert request("/api/studio/backups", {})["bytes"] > 0
+        checks.extend(["packaged XLSX import", "server-owned draft", "experiment backup"])
         if sys.platform == "win32":
             import secrets
 
@@ -272,7 +292,7 @@ def _self_test(folder: Path, report: Path) -> int:
             ])
         result.update(ok=True, checks=checks)
     except Exception as exc:
-        result["error"] = str(exc)
+        result["error"] = f"{type(exc).__name__}: {exc}"
     finally:
         server.close()
         result["server_stopped"] = not server.process.is_alive()
@@ -349,7 +369,10 @@ def main(argv: list[str] | None = None) -> int:
             "2. 播放、暂停或拖动时间轴，观察加工、堵塞和故障。\n"
             "3. 在“模型接入”保存 API 地址、模型和密钥，右侧随时切换。\n"
             "4. 输入自然语言目标，校验通过后生成新版本并重新仿真。\n"
-            "5. 执行统计评估比较方案，再导出实验包。\n\n"
+            "5. 执行统计评估比较方案，再导出实验包。\n"
+            "6. 点击“实验工具”使用表格导入、瓶颈与可信度分析、批量实验。\n"
+            "7. 在实验管理中搜索、归档；在备份与恢复中保存或导入实验 ZIP。\n"
+            "8. 模型接入提供测试连接；草稿自动保存在本机数据目录。\n\n"
             "API 密钥默认仅本次运行有效；可在模型接入中选择本机加密保存。\n"
             "关闭窗口会停止后台服务，未完成的任务下次需重新运行。\n"
             "这是离散事件仿真与二维状态回放，工程使用需用实际数据校准。"

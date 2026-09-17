@@ -1,10 +1,10 @@
 # SimPy Lab Studio
 
-[下载 v1.2.0 安装程序](https://github.com/Sylphiette666/SimPy-Lab-Studio/releases/download/v1.2.0/SimPy-Lab-Studio-Setup-1.2.0.exe) · [下载 v1.2.0 源码 ZIP](source-packages/SimPy-Lab-Studio-1.2.0-source.zip?raw=true) · [源码包说明与校验](source-packages/README.md)
+[下载 v1.3.0 安装程序](https://github.com/Sylphiette666/SimPy-Lab-Studio/releases/download/v1.3.0/SimPy-Lab-Studio-Setup-1.3.0.exe) · [下载 v1.3.0 源码 ZIP](source-packages/SimPy-Lab-Studio-1.3.0-source.zip?raw=true) · [源码包说明与校验](source-packages/README.md)
 
-> 当前 `main` 为 **v1.2.0 正式版**，包含最新测试版已验证的功能。v1.0.0 和 v1.1.0 发布记录及文件继续保留，后续开发仍使用 `frontend/simulation-workspace`。
+> 当前 `main` 为 **v1.3.0 正式版**，包含最新测试版已验证的功能。v1.0.0、v1.1.0 和 v1.2.0 发布记录及文件继续保留；修改前 main 已保存在 `archive/v1.2.0-before-priority-upgrades`，后续开发仍使用 `frontend/simulation-workspace`。
 
-本版新增 **图形建模**（拖放设备与容器、端口连线、参数编辑、撤销/重做）、**运行助手对话工具**（搜索、复制、导出及表格/代码/公式离线显示）、**可选的本机密钥加密保存**，以及**历史方案完整评估详情**。对应改进名单第 1、4、6 项，保留原有仿真、AI 调整和评估功能。见 [v1.2.0 发布说明](docs/releases/v1.2.0.md)、[图形建模说明](docs/visual-model-editor.md)、[对话工具](docs/conversation-tools.md) 与 [密钥保存](docs/credential-storage.md)。
+本版完成高优先级清单第 **5、9、10、13、15、17、21、24、25 项**：应用数据目录中的草稿恢复、CSV/Excel 参数导入、输入检查、瓶颈分析、批量实验、统计可信度与实测校准、API 连接测试、实验管理和备份恢复，以及文档与版本统一。见 [v1.3.0 发布说明](docs/releases/v1.3.0.md) 和 [实验工具使用说明](docs/priority-upgrades.md)。保留已有图形建模、对话工具、密钥加密保存与历史评估功能。
 
 带独立窗口的 Windows 制造仿真软件：编辑生产线模型，观看 SimPy 状态回放，随时切换 AI 模型，用自然语言生成新方案，并通过重复实验比较结果。
 
@@ -14,9 +14,9 @@
 
 ## 下载与启动
 
-推荐分享 [v1.2.0 Release](https://github.com/Sylphiette666/SimPy-Lab-Studio/releases/tag/v1.2.0) 中的 **`SimPy-Lab-Studio-Setup-1.2.0.exe`**。双击进入中文安装向导，选择位置和快捷方式即可完成安装。安装程序会检测 WebView2，缺失时使用微软官方程序联网安装；电脑已有 WebView2 时可以离线安装。
+推荐分享 [v1.3.0 Release](https://github.com/Sylphiette666/SimPy-Lab-Studio/releases/tag/v1.3.0) 中的 **`SimPy-Lab-Studio-Setup-1.3.0.exe`**。双击进入中文安装向导，选择位置和快捷方式即可完成安装。安装程序会检测 WebView2，缺失时使用微软官方程序联网安装；电脑已有 WebView2 时可以离线安装。
 
-已安装旧版的用户，先退出软件再运行新版安装程序，可覆盖更新并保留实验数据。第一版安装程序和便携包仍可从 v1.0.0 发布记录下载。版本变化见 [v1.2.0 发布说明](docs/releases/v1.2.0.md)。
+已安装旧版的用户，先退出软件再运行新版安装程序，可覆盖更新并保留实验数据。第一版安装程序和便携包仍可从 v1.0.0 发布记录下载。版本变化见 [v1.3.0 发布说明](docs/releases/v1.3.0.md)。
 
 安装完成后可从桌面或开始菜单启动，在 Windows“已安装的应用”中卸载。卸载保留实验数据。详见 [安装和分享说明](docs/installer.md)。
 
@@ -41,6 +41,8 @@ SimPy Lab Studio/
 - 回放自然结束后，自动为当前版本请求完整重复实验；也可手动评估。比较产出率、平均在制品与单位能耗的均值和置信区间，查看方案说明、恢复历史方案，导出实验 ZIP 与独立 HTML 报告。
 
 API 密钥默认仅本次运行使用。v1.2.0 起在“模型接入”提供可选的**在本机加密保存密钥**：勾选并保存后，重启软件自动恢复；取消勾选并保存会移除磁盘副本，“移除此配置密钥”同时清除本次使用和已保存的密钥。使用 Windows 当前用户 DPAPI 保护，磁盘只写密文；密钥及密文均不回传给界面或加入实验导出包。没有 API 密钥也可以使用编辑、回放、评估和导出。详见 [密钥保存说明](docs/credential-storage.md)。
+
+新增功能从仿真工具栏的 **实验工具** 进入；输入模型窗口也提供 **导入表格** 和 **检查输入参数**，模型接入窗口提供 **测试连接**。
 
 ## 使用顺序
 

@@ -4,13 +4,14 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#153f39">
-  <title>SimPy Lab Studio · v1.2.0</title>
+  <title>SimPy Lab Studio · v1.3.0</title>
   <link rel="icon" href="/static/app.ico">
   <link rel="stylesheet" href="/static/style.css">
   <link rel="stylesheet" href="/static/workspace.css">
   <link rel="stylesheet" href="/static/vendor/katex/dist/katex.min.css">
   <link rel="stylesheet" href="/static/conversation.css">
   <link rel="stylesheet" href="/static/visual-editor.css">
+  <link rel="stylesheet" href="/static/studio-tools.css">
   <script src="/static/vendor/marked/lib/marked.umd.js" defer></script>
   <script src="/static/vendor/dompurify/dist/purify.min.js" defer></script>
   <script src="/static/vendor/katex/dist/katex.min.js" defer></script>
@@ -20,6 +21,8 @@
   <script src="/static/topology.js" defer></script>
   <script src="/static/model-graph.js" defer></script>
   <script src="/static/visual-editor.js" defer></script>
+  <script src="/static/studio-recovery.js" defer></script>
+  <script src="/static/studio-tools.js" defer></script>
 </head>
 <body class="studio-workspace">
   <header class="app-header">
@@ -40,7 +43,7 @@
     <div class="nav-spacer"></div><span class="nav-version">STUDIO</span>
   </nav>
   <div class="workspace-heading">
-    <div class="workspace-title"><span class="workspace-breadcrumb">工作空间 <span aria-hidden="true">/</span></span><h1>仿真实验室</h1><span class="workspace-edition">v1.2.0 · 正式版</span></div>
+    <div class="workspace-title"><span class="workspace-breadcrumb">工作空间 <span aria-hidden="true">/</span></span><h1>仿真实验室</h1><span class="workspace-edition">v1.3.0 · 正式版</span></div>
     <div class="workspace-heading-right"><span id="version-badge" class="version-badge">初始化中</span><button id="new-session" type="button" class="button quiet">新建实验</button></div>
   </div>
   <div id="global-error" class="notice error global-notice" role="alert" hidden></div>

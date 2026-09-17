@@ -1,4 +1,4 @@
-SimPy Lab Studio 1.2.0 — 安装与使用说明
+SimPy Lab Studio 1.3.0 — 安装与使用说明
 
 这是用于生产线建模、仿真回放和 AI 辅助调整的 Windows 桌面软件。
 

@@ -57,6 +57,7 @@ const path = require('node:path');
     await page.goto(url, { waitUntil: 'networkidle' });
     await page.waitForFunction(() => document.querySelector('#model-name')?.value);
     await page.evaluate(id => localStorage.setItem('simlab.studio.session', id), session.id);
+    assert.ok((await context.request.put(url + '/api/studio/workspace', { data: { selected_session_id: session.id } })).ok());
     await page.reload({ waitUntil: 'networkidle' });
     await page.waitForFunction(() => !document.querySelector('#play-pause').disabled);
     const activeLabel = await page.locator('#active-label').textContent();

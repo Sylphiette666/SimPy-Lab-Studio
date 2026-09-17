@@ -61,6 +61,7 @@
   function remember(before) {
     if (JSON.stringify(before) === JSON.stringify(graph)) return;
     undo.push(before); if (undo.length > 80) undo.shift(); redo = [];
+    window.StudioTools?.scheduleDraft();
   }
   function change(fn) {
     if (!editable()) return;
@@ -339,5 +340,14 @@
       else { window.StudioWorkspace.openModel(); showError("model-error", error); }
     }
   });
-  window.StudioVisualEditor = {sync}; sync();
+  window.StudioVisualEditor = {sync,
+    snapshot: () => graph && !stale() ? clone({graph, base, mode, sourceStamp, savedGraph}) : null,
+    recover: value => {
+      if (!value?.graph?.nodes || !value?.graph?.edges || value.graph.nodes.length > 25) return false;
+      graph = clone(value.graph); base = clone(value.base); mode = value.mode;
+      sourceStamp = value.sourceStamp; savedGraph = value.savedGraph; contextKey = versionKey();
+      undo = []; redo = []; selectedNode = null; selectedEdge = null; connectionFrom = null; gesture = null;
+      render(); return true;
+    }
+  }; sync();
 })();

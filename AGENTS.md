@@ -1,6 +1,6 @@
 # Release workflow
 
-The user keeps the original first release and one rolling working edition. The user explicitly promoted the current tested application to `main` and requested numbered public releases. The current stable release is v1.2.0.
+The user keeps the original first release and one rolling working edition. The user explicitly promoted the current tested application to `main` and requested numbered public releases. The current stable release is v1.3.0. The previous main is preserved on `archive/v1.2.0-before-priority-upgrades`.
 
 - `main` now contains the current stable release. Preserve the immutable `v1.0.0` tag/release and the first edition's executable and installer; do not keep `main` frozen at v1.0.0.
 - Continue development on `frontend/simulation-workspace`, which is now the rolling test branch. Do not create separate preview, equipment, or bug-fix editions.
@@ -12,6 +12,6 @@ The user keeps the original first release and one rolling working edition. The u
 
 The simulation engine, metric calculations and physical model constraints remain outside a page-only change. AI adapter fixes already present in this branch must be retained.
 
-The user selects numbered improvement items one at a time. Implement only the item explicitly requested; do not automatically continue through the improvement list.
+The user normally selects numbered improvement items. The 2026-09-17 request explicitly authorizes all nine high-priority screenshot items (5, 9, 10, 13, 15, 17, 21, 24, 25). Do not automatically implement medium-priority items or the separate historical roadmap in 优化.md.
 
 The original numbered list and completed test-branch items are recorded in `docs/improvement-list.md`. Preserve its numbering when resolving follow-up requests.

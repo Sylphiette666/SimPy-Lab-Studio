@@ -98,7 +98,7 @@ async function api(path, options = {}) {
     let detail = typeof data.detail === "string" ? data.detail : "请求未完成，请稍后重试。";
     const errors = data.errors || (Array.isArray(data.detail) ? data.detail : []);
     if (errors.length) detail += "\n" + errors.map((item) => `${item.path || (item.loc || []).join(".")}：${item.message || item.msg}`).join("\n");
-    const error = new Error(detail); error.status = response.status; throw error;
+    const error = new Error(detail); error.status = response.status; error.fields = errors; throw error;
   }
   return data;
 }
@@ -143,7 +143,7 @@ function updateControls() {
   window.StudioTopology?.sync();
   window.StudioVisualEditor?.sync();
 }
-function setDirty() { state.dirty = true; updateControls(); }
+function setDirty() { state.dirty = true; updateControls(); window.StudioTools?.scheduleDraft(); }
 function renderAI() {
   const ai = state.ai || {};
   text("ai-status", ai.available ? "已配置" : "待配置");
@@ -226,6 +226,7 @@ function renderEditor(config, mode) {
   });
   window.StudioTopology?.render(config);
   updateMode(); renderBreakSummary(); showError("model-error", null); updateControls();
+  window.StudioTools?.parameterHelp();
 }
 function updateMode() {
   const paper = $("model-mode").value === "paper";
@@ -237,7 +238,10 @@ function readDraft() {
   const value = (id) => {
     const input = $(id);
     const number = Number(input.value);
-    if (!input.value.trim() || !Number.isFinite(number)) throw new Error("请完整填写数值参数。");
+    if (!input.value.trim() || !Number.isFinite(number)) {
+      window.StudioTools?.markField(id, "请填写有限数值。");
+      throw new Error("请完整填写数值参数。");
+    }
     return number;
   };
   config.name = $("model-name").value.trim();
@@ -257,7 +261,10 @@ function readDraft() {
     buffer.capacity = value(`buffer-${index}-capacity`);
     buffer.delay_seconds = value(`buffer-${index}-delay_seconds`);
   });
-  if (config.warmup_seconds >= config.until_seconds) throw new Error("预热时长必须小于仿真时长。");
+  if (config.warmup_seconds >= config.until_seconds) {
+    window.StudioTools?.markField("warmup-days", "预热时长必须小于仿真时长。");
+    throw new Error("预热时长必须小于仿真时长。");
+  }
   for (const [items, label] of [[config.machines, "设备"], [config.buffers, "容器"]]) {
     if (items.some((item) => !item.name || item.name.length > 80)) throw new Error(`${label}名称须为 1–80 个字符。`);
     if (new Set(items.map((item) => item.name)).size !== items.length) throw new Error(`${label}名称不能重复。`);
@@ -266,7 +273,10 @@ function readDraft() {
 }
 async function applyModel() {
   if (!$("model-form").checkValidity()) {
-    window.StudioWorkspace?.openModel(); $("model-form").reportValidity(); return;
+    window.StudioWorkspace?.openModel();
+    const invalid = $("model-form").querySelector(":invalid");
+    invalid?.closest("details")?.setAttribute("open", "");
+    $("model-form").reportValidity(); return;
   }
   let config;
   try { config = readDraft(); }
@@ -274,6 +284,7 @@ async function applyModel() {
     window.StudioWorkspace?.openModel(); showError("model-error", error); throw error;
   }
   const mode = $("model-mode").value;
+  if (window.StudioTools && !await window.StudioTools.validateModel(config, mode)) return;
   window.StudioWorkspace?.beginPreview();
   state.busy = true; pause(); updateControls();
   try {
@@ -290,6 +301,7 @@ async function applyModel() {
   } finally { state.busy = false; updateControls(); }
 }
 function acceptSession(session) {
+  const preservedDraft = window.StudioTools?.beforeAccept(session);
   const previousHead = state.session?.active_version_id;
   state.session = session; persistSession();
   for (const run of session.runs) {
@@ -302,6 +314,7 @@ function acceptSession(session) {
   text("active-label", versionName(version));
   if (previousHead !== session.active_version_id) resetReplay();
   renderMessages(); renderVersions(); updateControls();
+  window.StudioTools?.accepted(session, preservedDraft);
 }
 async function createSession() {
   state.busy = true; updateControls(); pause();
@@ -883,6 +896,7 @@ function showAssumptions() {
   openInfo("模型说明与统计口径", [list]);
 }
 async function openExperiments() {
+  if (window.StudioTools) return window.StudioTools.open("experiments");
   const data = await api("/sessions");
   const list = node("div", "saved-experiments");
   for (const session of data.sessions || []) {
@@ -963,7 +977,9 @@ async function initialize() {
   try {
     state.bootstrap = await api("/bootstrap"); state.ai = state.bootstrap.ai; renderAI();
     acceptAIProfiles(await api("/ai/profiles"));
-    let saved; try { saved = localStorage.getItem(SESSION_KEY); } catch { saved = null; }
+    const workspace = await api("/workspace");
+    let saved = workspace.selected_session_id;
+    if (!saved) { try { saved = localStorage.getItem(SESSION_KEY); } catch { saved = null; } }
     if (saved) {
       try { acceptSession(await api(`/sessions/${saved}`)); }
       catch (error) {
@@ -972,6 +988,7 @@ async function initialize() {
       }
     } else await createSession();
     await recoverRuns();
+    await window.StudioTools?.ready();
   } catch (error) {
     showError("global-error", `应用加载失败：${error.message}。请关闭后重新打开应用；若仍失败，请查看数据目录中的日志。`);
     text("version-badge", "连接失败");
