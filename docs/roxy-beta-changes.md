@@ -1,8 +1,8 @@
 # roxy_beta 改动汇总：相对 v1.2.0
 
-整理日期：2026-09-16。仓库：[R-0xy/SimPy-Kpi-Lab](https://github.com/R-0xy/SimPy-Kpi-Lab)，交付分支：`roxy_beta`。
+整理日期：2026-09-16；发布目标更新：2026-09-17。仓库：[Sylphiette666/SimPy-Lab-Studio](https://github.com/Sylphiette666/SimPy-Lab-Studio)，交付分支：`roxy_beta`，预发布：[roxy_beta](https://github.com/Sylphiette666/SimPy-Lab-Studio/releases/tag/roxy_beta)。此前上传到 R-0xy 仓库的副本保留，本次按用户更正发布到上述仓库。
 
-本文汇总 v1.2.0 正式版之后的可靠性、模型接入及九项高优先级改进。最近一轮功能提交为 [`62f5ab1`](https://github.com/R-0xy/SimPy-Kpi-Lab/commit/62f5ab1bcb16dc108440818a6489bd06f054c0a2)。桌面版本基线仍为 1.2.0，界面标注“开发更新”；这些改动未发布为新的编号正式版。
+本文汇总 v1.2.0 正式版之后的可靠性、模型接入及九项高优先级改进。最近一轮功能提交为 [`62f5ab1`](https://github.com/Sylphiette666/SimPy-Lab-Studio/commit/62f5ab1bcb16dc108440818a6489bd06f054c0a2)。桌面版本基线仍为 1.2.0，界面标注“开发更新”；此次使用独立的 beta 预发布，不替换仓库已有的 v1.3.0 等正式版，也不代表已合并 v1.3.0 的改动。
 
 ## 一、改动总览
 
@@ -105,7 +105,7 @@
 
 - 测试版 EXE：`F:\Simpy\SimPy Lab Studio 测试版\SimPy Lab Studio.exe`。
 - EXE SHA-256：`13b381973a23980ea45ba8c720e2a667a783e241670f3cd767612df4db675bb1`。
-- 已交付的功能源码快照：[SimPy-Lab-Studio-test-source.zip](../source-packages/SimPy-Lab-Studio-test-source.zip)，附带[校验文件](../source-packages/SimPy-Lab-Studio-test-source.zip.sha256)。本次文档提交未重新打包该功能快照。
+- 当前源码快照：[SimPy-Lab-Studio-test-source.zip](../source-packages/SimPy-Lab-Studio-test-source.zip)，附带[校验文件](../source-packages/SimPy-Lab-Studio-test-source.zip.sha256)。2026-09-17 发布时更新快照，包含本汇总及发布说明；应用代码和已验证 EXE 保持不变。
 
 本轮保留现有物理事件引擎与论文模型约束；未实现并行／返工生产线、仿真检查点续跑、自动更新或新的正式安装包。
 
